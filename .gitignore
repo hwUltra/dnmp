@@ -1,0 +1,9 @@
+.idea
+.DS_Store
+.env
+!www/localhost/
+logs
+docker-compose.yml
+docker-compose.yml.*
+nohup.out
+data/composer/cache

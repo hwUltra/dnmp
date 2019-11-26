@@ -99,11 +99,11 @@ do_install(){
 
 
 	if [ "${DSelect}" = "1" ]; then
-        mv -f  docker-compose-sample.yml  docker-compose.yml
-    elif [ "${DSelect}" = "2" ]; then
-        mv -f  docker-compose-base.yml  docker-compose.yml
-    elif [ "${DSelect}" = "3" ]; then
-        mv -f docker-compose-full.yml  docker-compose.yml 
+        cp -f  docker-compose-sample.yml  docker-compose.yml
+	elif [ "${DSelect}" = "2" ]; then
+        cp -f  docker-compose-base.yml  docker-compose.yml
+	elif [ "${DSelect}" = "3" ]; then
+        cp -f  docker-compose-full.yml  docker-compose.yml 
     fi
 
 	docker-compose up

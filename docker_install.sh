@@ -69,17 +69,20 @@ do_install(){
 		systemctl start docker
 	fi
 
-	if command_exists pip; then
-		echo "pip 已安装"
-	else
-		yum -y install epel-release
-		yum -y install python-pip
-	fi
+	# if command_exists pip; then
+	# 	echo "pip 已安装"
+	# else
+	# 	yum -y install epel-release
+	# 	yum -y install python-pip
+	# fi
 
 	if command_exists docker-compose; then
 		echo "compose 已安装"
 	else
-		pip install docker-compose --ignore-installed requests	
+		curl -L https://github.com/docker/compose/releases/download/1.23.0-rc3/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+		chmod +x /usr/local/bin/docker-compose
+	    # pip install --upgrade pip
+		# pip install docker-compose --ignore-installed requests	
 	fi
 
 	if command_exists git; then

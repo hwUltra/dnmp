@@ -1,5 +1,5 @@
 DNMP（Docker + Nginx + MySQL + PHP7/5 + Redis）是一款全功能的**LNMP一键安装程序**。
-![](https://raw.githubusercontent.com/sqq12345/e0702/master/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20190613115019.png)
+
 
 # 目录
 - [1.快速使用](#1快速使用)
@@ -26,7 +26,7 @@ DNMP（Docker + Nginx + MySQL + PHP7/5 + Redis）是一款全功能的**LNMP一�
 - [7.在正式环境中安全使用](#7在正式环境中安全使用)
 - [8.jenkins使用](#8jenkins使用)
     - [8.1 jenkins配置webhook插件](#81-jenkins配置webhook插件)
-   
+
 
 
 ## 1.快速使用
@@ -40,7 +40,7 @@ DNMP（Docker + Nginx + MySQL + PHP7/5 + Redis）是一款全功能的**LNMP一�
 
 - sh  docker_install.sh  执行脚本 等待安装完毕即可  
 
-  ​ （默认的dnmp安装在/wwwroot下面，所有在vagrant中可以设置/wwwroot的共享目录）
+   （默认的dnmp安装在/wwwroot下面，所有在vagrant中可以设置/wwwroot的共享目录）
 
 
 
@@ -50,14 +50,14 @@ DNMP（Docker + Nginx + MySQL + PHP7/5 + Redis）是一款全功能的**LNMP一�
 
  - [http://虚拟机的ip地址](http://虚拟机的ip地址)： 默认*http*站点
  - [https://虚拟机的ip地址](https:/虚拟机的ip地址)： 自定义证书*https*站点，访问时浏览器会有安全提示，忽略提示访问即可
- - [http://虚拟机的ip地址:8080](http://虚拟机的ip地址:8080)  可以打开phpMysAdmin的面板操作数据库
- - [http://虚拟机的ip地址:8081](http://虚拟机的ip地址:8081)  可以打开phpRedisAdmin
+ - [http://虚拟机的ip地址:9080](http://虚拟机的ip地址:9080)  可以打开phpMysAdmin的面板操作数据库
+ - [http://虚拟机的ip地址:9081](http://虚拟机的ip地址:9081)  可以打开phpRedisAdmin
  - [http://虚拟机的ip地址:8888](http://虚拟机的ip地址:8888)   可以打开docker的图形化管理工具，可以查看镜像 容器 安装等  账号admin  密码123123123
 默认情况下该虚拟机指向的项目根目录：在/www/lnmp-docker/wwwroot/base/public
 
 要修改端口、日志文件位置、以及是否替换source.list文件等，请修改.env文件，然后重新构建：
 ```bash
-$ docker-compose build php56    # 重建单个服务
+$ docker-compose build php    # 重建单个服务
 $ docker-compose build          # 重建全部服务
 
 ```
@@ -69,19 +69,19 @@ $ docker-compose build          # 重建全部服务
 
     进入php容器  docker exec -it dnmp-php sh
     重启php服务  docker-compose restart php
-  
+      
      修改配置文件 php.init，可使用该命令重新加载配置文件。
      修改配置文件 www.conf，可使用该命令重新加载配置文件。
-
+    
     服务管理
-
+    
     配置测试：docker exec -it dnmp-php bash -c "/usr/local/php/sbin/php-fpm -t"
     启动：docker exec -it dnmp-php bash -c "/usr/local/php/sbin/php-fpm"
     关闭：docker exec -it dnmp-php bash -c "kill -INT 1"
     重启：docker exec -it dnmp-php bash -c "kill -USR2 1"
     查看php-fpm进程数：docker exec -it dnmp-php bash -c "ps aux | grep -c php-fpm"
     查看PHP版本：docker exec -it dnmp-php bash -c "/usr/local/php/bin/php -v"
-
+    
     tips:如果执行上述命名提示the input device is not a TTY.  If you are using mintty, try prefixing the command with 'winpty' 错误，可在前面加上winpty 即可
 
 
@@ -94,15 +94,15 @@ $ docker-compose build          # 重建全部服务
 ### 2.3 docker管理mysql
 
     进入mysql容器  docker exec -it dnmp-mysql sh
-
+    
     修改配置文件 my.cnf，重新加载：docker-compose restart mysql
-
+    
     容器内连接：mysql -uroot -p123456
-
+    
     外部宿主机连接：mysql -h 127.0.0.1 -P 3308 -uroot -p123456
-
+    
     数据-备份-恢复
-
+    
     导出（备份）
     导出数据库中的所有表结构和数据：docker exec -it dnmp-mysql mysqldump -uroot -p123456 test > test.sql
     只导结构不导数据：docker exec -it dnmp-mysql mysqldump --opt -d -uroot -p123456 test > test.sql
@@ -114,11 +114,11 @@ $ docker-compose build          # 重建全部服务
 ### 2.4 docker管理redis
 
     连接Redis容器：docker exec -it dnmp-redis redis-cli -h 127.0.0.1 -p 63789
-
+    
     通过容器连接：docker exec -it dnmp-redis redis-cli -h dnmp-redis -p 63789
-
+    
     单独重启redis服务 docker-compose up --no-deps -d redis
-
+    
     外部宿主机连接：redis-cli -h 127.0.0.1 -p 63789  
 
 ### 2.5 docker管理crontab
@@ -131,7 +131,7 @@ $ docker-compose build          # 重建全部服务
 
 ### 2.6 docker管理websocket
 
-     1.进入dnmp-php容器：docker exec -it dnmp-php73 sh
+     1.进入dnmp-php容器：docker exec -it dnmp-php sh
      2.以daemon（守护进程）方式启动 workerman / swoole
      3.宿主机平滑重启 
      4.env 配置了对应对外端口
@@ -155,9 +155,9 @@ $ docker-compose build          # 重建全部服务
 ```
     fastcgi_pass   php56:9000;
 ```
-要改用PHP7.2，修改为：
+要改用PHP7.3，修改为：
 ```
-    fastcgi_pass   php73:9000;
+    fastcgi_pass   php:9000;
 ```
 再**重启 Nginx** 生效。
 
@@ -170,9 +170,9 @@ $ docker-compose build          # 重建全部服务
 
 -    先进入php对应的容器：
 
-     >docker  exec -it  dnmp-php72 sh
- 
- 
+     >docker  exec -it  dnmp-php sh
+
+
 -   然后输入以下三行安装的命令   （该命令在dockerfile中)：
 
      >apt install -y libmemcached-dev zlib1g-dev  
@@ -189,12 +189,12 @@ $ docker-compose build          # 重建全部服务
 > chmod a+x /usr/local/bin/composer
 >
 > composer config -g repo.packagist composer https://mirrors.aliyun.com/composer/
-  
+
 
 
 ## 4.nginx站点的配置   
 
-- 复制  /www/lnmp-docker/conf/conf.d/localhost.conf文件  在同一个目录下，自定义名称（例如anfo.conf）
+- 复制  /dnmp/services/nginx/conf.d/localhost.conf文件  在同一个目录下，自定义名称（例如anfo.conf）
 
 - 更改其中的域名地址 和站点目录
 
@@ -218,7 +218,7 @@ $ docker-compose build          # 重建全部服务
    >curl https://get.acme.sh | sh   
 
 - 生成证书
- 
+
    > ~/.acme.sh/acme.sh --issue -d www.xx.com --nginx
   
 - 将证书复制到指定目录并设置自动更新,输入如下命令
@@ -236,7 +236,7 @@ $ docker-compose build          # 重建全部服务
    >ssl_certificate /etc/nginx/conf.d/ssl/xx.com/fullchain.cer; 
   
    >ssl_certificate_key /etc/nginx/conf.d/ssl/xx.com/xx.key;  
-                      
+   
 
 
 ## 5.使用Log
@@ -293,9 +293,9 @@ log-error               = /var/lib/mysql/mysql.error.log
 本项目默认在`docker-compose.yml`中开启了用于MySQL在线管理的*phpMyAdmin*，以及用于redis在线管理的*phpRedisAdmin*，可以根据需要修改或删除。
 
 ### 6.1 phpmyadmin
-phpMyAdmin容器映射到主机的端口地址是：`8080`，所以主机上访问phpMyAdmin的地址是：
+phpMyAdmin容器映射到主机的端口地址是：`9080`，所以主机上访问phpMyAdmin的地址是：
 ```
-http://localhost:8080
+http://localhost:9080
 
 ```
 
@@ -307,9 +307,9 @@ MySQL连接信息：
 
 
 ### 6.2 phpredisadmin
-phpRedisAdmin容器映射到主机的端口地址是：`8081`，所以主机上访问phpMyAdmin的地址是：
+phpRedisAdmin容器映射到主机的端口地址是：`9081`，所以主机上访问phpMyAdmin的地址是：
 ```
-http://localhost:8081
+http://localhost:9081
 ```
 
 ### 6.3 portainer
@@ -330,7 +330,7 @@ http://localhost:8888
 
 ### 8.1 jenkins配置webhook插件
  jenkins配置webhook插件:实现项目代码与git同步
- 
+
 - 安装Gogs webhook 插件  
   打开 系统管理 -> 管理插件 -> 可选插件 ，在右上角的输入框中输入“gogs”来筛选插件：进行插件的安装
 
@@ -340,10 +340,10 @@ http://localhost:8888
      > 添加任务描述  
 
      > Gogs Webhook勾选-->use Gogs sercret  
-     
+  
      > 源码管理，其他设置成默认即可 （重要）
      ![](https://raw.githubusercontent.com/sqq12345/e0702/master/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20190625184058.png)
-     
+  
 - git添加webhook  
   进入git项目，点击  【仓库设置 ->管理web钩子 ->添加web钩子 ->选择Gogs 设置推送地址 触发事件 勾选是否激活 】 即可  
   

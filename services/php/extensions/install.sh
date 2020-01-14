@@ -15,7 +15,7 @@ echo
 
 
 if [ "${PHP_EXTENSIONS}" != "" ]; then
-    apk add --no-cache autoconf g++ libtool make curl-dev gettext-dev linux-headers
+    apk --update add --no-cache --virtual .build-deps autoconf g++ libtool make curl-dev gettext-dev linux-headers
 fi
 
 
@@ -199,9 +199,19 @@ fi
 
 if [[ -z "${EXTENSIONS##*,gd,*}" ]]; then
     echo "---------- Install gd ----------"
-    apk add --no-cache freetype-dev libjpeg-turbo-dev libpng-dev \
-    && docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/ \
-    && docker-php-ext-install ${MC} gd
+    apk add --no-cache \
+        freetype \
+        freetype-dev \
+        libpng \
+        libpng-dev \
+        libjpeg-turbo \
+        libjpeg-turbo-dev \
+    && docker-php-ext-configure gd \
+    && docker-php-ext-install ${MC} gd \
+    && apk del \
+        freetype-dev \
+        libpng-dev \
+        libjpeg-turbo-dev
 fi
 
 if [[ -z "${EXTENSIONS##*,intl,*}" ]]; then
@@ -338,6 +348,19 @@ if [[ -z "${EXTENSIONS##*,yac,*}" ]]; then
     printf "\n" | pecl install yac-2.0.2
     docker-php-ext-enable yac
 fi
+
+if [[ -z "${EXTENSIONS##*,yar,*}" ]]; then
+    isPhpVersionGreaterOrEqual 7 0
+    if [[ "$?" = "1" ]]; then
+        echo "---------- Install yar ----------"
+        printf "\n" | pecl install yar
+        docker-php-ext-enable yar
+    else
+        echo "yar requires PHP >= 7.0.0, installed version is ${PHP_VERSION}"
+    fi
+
+fi
+
 
 if [[ -z "${EXTENSIONS##*,yaconf,*}" ]]; then
     echo "---------- Install yaconf ----------"
@@ -542,4 +565,9 @@ if [[ -z "${EXTENSIONS##*,xlswriter,*}" ]]; then
     else
         echo "---------- PHP Version>= 7.0----------"
     fi
+fi
+
+if [ "${PHP_EXTENSIONS}" != "" ]; then
+    apk del .build-deps \
+    && docker-php-source delete
 fi

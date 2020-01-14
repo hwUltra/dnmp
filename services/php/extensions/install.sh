@@ -450,7 +450,9 @@ if [[ -z "${EXTENSIONS##*,redis,*}" ]]; then
     echo "---------- Install redis ----------"
     isPhpVersionGreaterOrEqual 7 0
     if [[ "$?" = "1" ]]; then
-        installExtensionFromTgz redis-5.0.2
+        # installExtensionFromTgz redis-5.0.2
+        pecl install  redis 
+        docker-php-ext-enable redis
     else
         printf "\n" | pecl install redis-4.3.0
         docker-php-ext-enable redis
@@ -468,7 +470,7 @@ if [[ -z "${EXTENSIONS##*,memcached,*}" ]]; then
     isPhpVersionGreaterOrEqual 7 0
 
     if [[ "$?" = "1" ]]; then
-        printf "\n" | pecl install memcached-3.1.3
+        printf "\n" | pecl install memcached
     else
         printf "\n" | pecl install memcached-2.2.0
     fi

@@ -207,6 +207,10 @@ if [[ -z "${EXTENSIONS##*,gd,*}" ]]; then
         libjpeg-turbo \
         libjpeg-turbo-dev \
     && docker-php-ext-configure gd \
+        --with-gd \
+        --with-freetype-dir=/usr/include/ \
+        --with-png-dir=/usr/include/ \
+        --with-jpeg-dir=/usr/include/ \
     && docker-php-ext-install ${MC} gd \
     && apk del \
         freetype-dev \
@@ -470,12 +474,22 @@ if [[ -z "${EXTENSIONS##*,memcached,*}" ]]; then
     isPhpVersionGreaterOrEqual 7 0
 
     if [[ "$?" = "1" ]]; then
-        printf "\n" | pecl install memcached
+         printf "\n" | pecl install memcached
     else
         printf "\n" | pecl install memcached-2.2.0
     fi
 
     docker-php-ext-enable memcached
+fi
+
+if [[ -z "${EXTENSIONS##*,memcache,*}" ]]; then
+    echo "---------- Install memcache ----------"
+    isPhpVersionGreaterOrEqual 7 0
+    if [[ "$?" = "1" ]]; then
+        installExtensionFromTgz memcache-4.0.5.2
+    else
+        installExtensionFromTgz memcache-2.2.6
+    fi
 fi
 
 if [[ -z "${EXTENSIONS##*,xdebug,*}" ]]; then

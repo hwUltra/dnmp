@@ -8,7 +8,7 @@ is64bit=`getconf LONG_BIT`
 
 if [ "$is64bit" != '64' ];then
 	echo "====================================="
-	echo "抱歉, 6.0不支持32位系统, 请使用64位系统!";
+	echo "抱歉, 不支持32位系统, 请使用64位系统!";
 	exit 0;
 fi
 
@@ -84,6 +84,15 @@ do_install(){
 	    pip install --upgrade pip
 		pip install docker-compose --ignore-installed requests	
 	fi
+
+	
+	if command_exists docker-compose; then
+		echo "compose 已安装"
+	else
+		cp ./shell/docker-compose   /usr/local/bin/docker-compose
+		chmod +x /usr/local/bin/docker-compose
+	fi
+
 
 	if command_exists git; then
 		echo "git 已安装"

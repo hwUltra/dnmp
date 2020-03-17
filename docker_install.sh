@@ -69,29 +69,28 @@ do_install(){
 		systemctl start docker
 	fi
 
-	if command_exists pip; then
-		echo "pip 已安装"
-	else
-		yum -y install gcc libffi-devel python-devel openssl-devel 
-		yum -y install epel-release
-		yum -y install python-pip
-	fi
+	# if command_exists pip; then
+	# 	echo "pip 已安装"
+	# else
+	# 	yum -y install gcc libffi-devel python-devel openssl-devel 
+	# 	yum -y install epel-release
+	# 	yum -y install python-pip
+	# fi
 
-	if command_exists docker-compose; then
-		echo "compose 已安装"
-	else
-		# curl -L https://github.com/docker/compose/releases/download/1.26.0-rc2/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
-		# chmod +x /usr/local/bin/docker-compose
-	    pip install --upgrade pip
-		pip install docker-compose --ignore-installed requests	
-	fi
+	# if command_exists docker-compose; then
+	# 	echo "compose 已安装"
+	# else
+	# 	# curl -L https://github.com/docker/compose/releases/download/1.26.0-rc2/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+	# 	# chmod +x /usr/local/bin/docker-compose
+	#     pip install --upgrade pip
+	# 	pip install docker-compose --ignore-installed requests	
+	# fi
 
 	
 	if command_exists docker-compose; then
 		echo "compose 已安装"
 	else
-		# cp ./shell/docker-compose   /usr/local/bin/docker-compose
-		curl -L https://blog.imguo.com/docker-compose -o /usr/local/bin/docker-compose
+		curl -L https://get.daocloud.io/docker/compose/releases/download/1.25.4/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
 		chmod +x /usr/local/bin/docker-compose
 	fi
 
@@ -101,6 +100,7 @@ do_install(){
 	else
 		yum -y install git
 	fi
+	
 	sudo gpasswd -a ${USER} docker
 	mkdir -p $setup_path
 	cd $setup_path

@@ -460,9 +460,7 @@ if [[ -z "${EXTENSIONS##*,redis,*}" ]]; then
     echo "---------- Install redis ----------"
     isPhpVersionGreaterOrEqual 7 0
     if [[ "$?" = "1" ]]; then
-        # installExtensionFromTgz redis-5.0.2
-        pecl install  redis 
-        docker-php-ext-enable redis
+        installExtensionFromTgz redis-5.0.2
     else
         printf "\n" | pecl install redis-4.3.0
         docker-php-ext-enable redis
@@ -480,7 +478,7 @@ if [[ -z "${EXTENSIONS##*,memcached,*}" ]]; then
     isPhpVersionGreaterOrEqual 7 0
 
     if [[ "$?" = "1" ]]; then
-         printf "\n" | pecl install memcached
+        printf "\n" | pecl install memcached
     else
         printf "\n" | pecl install memcached-2.2.0
     fi
@@ -552,6 +550,8 @@ if [[ -z "${EXTENSIONS##*,swoole,*}" ]]; then
 
     if [[ "$?" = "1" ]]; then
         installExtensionFromTgz swoole-4.4.2
+        # pecl install  swoole 
+        # docker-php-ext-enable swoole
     else
         installExtensionFromTgz swoole-2.0.11
     fi
@@ -593,6 +593,33 @@ if [[ -z "${EXTENSIONS##*,xlswriter,*}" ]]; then
     if [[ "$?" = "1" ]]; then
         printf "\n" | pecl install xlswriter
         docker-php-ext-enable xlswriter
+    else
+        echo "---------- PHP Version>= 7.0----------"
+    fi
+fi
+
+if [[ -z "${EXTENSIONS##*,rdkafka,*}" ]]; then
+    echo "---------- Install rdkafka ----------"
+    isPhpVersionGreaterOrEqual 5 6
+
+    if [[ "$?" = "1" ]]; then
+        apk add librdkafka-dev
+        printf "\n" | pecl install rdkafka
+        docker-php-ext-enable rdkafka
+    else
+        echo "---------- PHP Version>= 5.6----------"
+    fi
+fi
+
+if [[ -z "${EXTENSIONS##*,zookeeper,*}" ]]; then
+    echo "---------- Install zookeeper ----------"
+    isPhpVersionGreaterOrEqual 7 0
+
+    if [[ "$?" = "1" ]]; then
+        apk add re2c
+        apk add libzookeeper-dev --repository http://${CONTAINER_PACKAGE_URL}/alpine/edge/testing/
+        printf "\n" | pecl install zookeeper
+        docker-php-ext-enable zookeeper
     else
         echo "---------- PHP Version>= 7.0----------"
     fi

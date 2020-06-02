@@ -547,11 +547,12 @@ fi
 if [[ -z "${EXTENSIONS##*,swoole,*}" ]]; then
     echo "---------- Install swoole ----------"
     isPhpVersionGreaterOrEqual 7 0
-
+apk
     if [[ "$?" = "1" ]]; then
-        installExtensionFromTgz swoole-4.4.2
-        # pecl install  swoole 
-        # docker-php-ext-enable swoole
+        # installExtensionFromTgz swoole-4.4.2
+        apk add --no-cache autoconf
+        pecl install  swoole 
+        docker-php-ext-enable swoole
     else
         installExtensionFromTgz swoole-2.0.11
     fi

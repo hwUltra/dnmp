@@ -204,9 +204,9 @@ if [[ -z "${EXTENSIONS##*,gd,*}" ]]; then
     if [[ "$?" = "1" ]]; then
         # "--with-xxx-dir" was removed from php 7.4,
         # issue: https://github.com/docker-library/php/issues/912
-        options="--with-freetype --with-jpeg"
+        options="--with-freetype --with-jpeg --with-webp"
     else
-        options="--with-gd --with-freetype-dir=/usr/include/ --with-png-dir=/usr/include/ --with-jpeg-dir=/usr/include/"
+        options="--with-gd --with-freetype-dir=/usr/include/ --with-png-dir=/usr/include/ --with-jpeg-dir=/usr/include/ --with-webp-dir=/usr/include/"
     fi
 
     apk add --no-cache \
@@ -216,6 +216,7 @@ if [[ -z "${EXTENSIONS##*,gd,*}" ]]; then
         libpng-dev \
         libjpeg-turbo \
         libjpeg-turbo-dev \
+	libwebp-dev \
     && docker-php-ext-configure gd ${options} \
     && docker-php-ext-install ${MC} gd \
     && apk del \
@@ -354,9 +355,14 @@ fi
 
 
 if [[ -z "${EXTENSIONS##*,yac,*}" ]]; then
-    echo "---------- Install yac ----------"
-    printf "\n" | pecl install yac-2.0.2
-    docker-php-ext-enable yac
+    isPhpVersionGreaterOrEqual 7 0
+    if [[ "$?" = "1" ]]; then
+        echo "---------- Install yac ----------"
+        printf "\n" | pecl install yac-2.0.2
+        docker-php-ext-enable yac
+    else
+        echo "yar requires PHP >= 7.0.0, installed version is ${PHP_VERSION}"
+    fi
 fi
 
 if [[ -z "${EXTENSIONS##*,yar,*}" ]]; then
@@ -373,9 +379,14 @@ fi
 
 
 if [[ -z "${EXTENSIONS##*,yaconf,*}" ]]; then
-    echo "---------- Install yaconf ----------"
-    printf "\n" | pecl install yaconf
-    docker-php-ext-enable yaconf
+    isPhpVersionGreaterOrEqual 7 0
+    if [[ "$?" = "1" ]]; then
+        echo "---------- Install yaconf ----------"
+        printf "\n" | pecl install yaconf
+        docker-php-ext-enable yaconf
+    else
+        echo "yar requires PHP >= 7.0.0, installed version is ${PHP_VERSION}"
+    fi
 fi
 
 if [[ -z "${EXTENSIONS##*,seaslog,*}" ]]; then
@@ -478,7 +489,7 @@ if [[ -z "${EXTENSIONS##*,memcached,*}" ]]; then
     isPhpVersionGreaterOrEqual 7 0
 
     if [[ "$?" = "1" ]]; then
-        printf "\n" | pecl install memcached
+        printf "\n" | pecl install memcached-3.1.3
     else
         printf "\n" | pecl install memcached-2.2.0
     fi
@@ -547,12 +558,9 @@ fi
 if [[ -z "${EXTENSIONS##*,swoole,*}" ]]; then
     echo "---------- Install swoole ----------"
     isPhpVersionGreaterOrEqual 7 0
-apk
+
     if [[ "$?" = "1" ]]; then
-        # installExtensionFromTgz swoole-4.4.2
-        apk add --no-cache autoconf
-        pecl install  swoole 
-        docker-php-ext-enable swoole
+        installExtensionFromTgz swoole-4.4.2
     else
         installExtensionFromTgz swoole-2.0.11
     fi

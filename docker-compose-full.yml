@@ -69,6 +69,51 @@ services:
     networks:
       - default
 
+  supervisor:
+    build:
+      context: ./services/supervisor
+      args:
+        ALPINE_VERSION: alpine:${ALPINE_VERSION}
+        TZ: "$TZ"
+    container_name: supervisor
+    ports:
+      - "${SUPERVISOR_HOST_PORT_C}:9001"
+    volumes:
+      - ${SUPERVISOR_LOG}:/var/log/supervisor/:rw
+      - ${SUPERVISOR_CONFIG}:/etc/supervisor/conf.d/:rw
+      - ${SUPERVISOR_CONF_FILE}:/etc/supervisor/supervisord.conf:ro
+    command:
+      - /bin/sh
+      - -c
+      - |
+        supervisord -n -c /etc/supervisor/supervisord.conf
+    restart: always
+    cap_add:
+      - SYS_PTRACE
+    networks:
+      - default
+
+
+#  openresty:
+#    image:  openresty/openresty:${OPENRESTY_VERSION}
+#    container_name: openresty
+#    ports:
+#       - "${OPENRESTY_HTTP_HOST_PORT}:80"
+#       - "${OPENRESTY_HTTPS_HOST_PORT}:443"
+#    volumes:
+#       - ${SOURCE_DIR}:/www/:rw
+#       - ${OPENRESTY_CONFD_DIR}:/etc/nginx/conf.d/:ro
+#       - ${OPENRESTY_SSL_CERTIFICATE_DIR}:/ssl:rw
+#       - ${OPENRESTY_CONF_FILE}:/usr/local/openresty/nginx/conf/nginx.conf:ro
+#       - ${OPENRESTY_FASTCGI_PHP_CONF}:/usr/local/openresty/nginx/conf/fastcgi-php.conf:ro
+#       - ${OPENRESTY_CONF_FASTCGIPARAMS_FILE}:/usr/local/openresty/nginx/conf/fastcgi_params:ro
+#       - ${OPENRESTY_LOG_DIR}:/var/log/nginx/:rw
+#    environment:
+#      TZ: "$TZ"
+#    networks:
+#      - default
+
+
   jenkins:
     image: jenkinsci/blueocean
     container_name: jenkins

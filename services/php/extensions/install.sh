@@ -52,7 +52,7 @@ isPhpVersionGreaterOrEqual()
 # Install extension from package file(.tgz),
 # For example:
 #
-# installExtensionFromTgz redis-5.0.2
+# installExtensionFromTgz redis-5.2.2
 #
 # Param 1: Package name with version
 # Param 2: enable options
@@ -321,6 +321,12 @@ if [[ -z "${EXTENSIONS##*,ldap,*}" ]]; then
 	docker-php-ext-install ${MC} ldap
 fi
 
+if [[ -z "${EXTENSIONS##*,psr,*}" ]]; then
+    echo "---------- Install psr ----------"
+    printf "\n" | pecl install psr
+    docker-php-ext-enable psr
+fi
+
 if [[ -z "${EXTENSIONS##*,imagick,*}" ]]; then
     echo "---------- Install imagick ----------"
 	apk add --no-cache file-dev
@@ -464,14 +470,14 @@ fi
 if [[ -z "${EXTENSIONS##*,amqp,*}" ]]; then
     echo "---------- Install amqp ----------"
     apk add --no-cache rabbitmq-c-dev
-    installExtensionFromTgz amqp-1.9.4
+    installExtensionFromTgz amqp-1.10.2
 fi
 
 if [[ -z "${EXTENSIONS##*,redis,*}" ]]; then
     echo "---------- Install redis ----------"
     isPhpVersionGreaterOrEqual 7 0
     if [[ "$?" = "1" ]]; then
-        installExtensionFromTgz redis-5.0.2
+        installExtensionFromTgz redis-5.2.2
     else
         printf "\n" | pecl install redis-4.3.0
         docker-php-ext-enable redis
@@ -534,12 +540,12 @@ if [[ -z "${EXTENSIONS##*,event,*}" ]]; then
     fi
 
     echo "---------- Install event again ----------"
-    installExtensionFromTgz event-2.5.3  "--ini-name event.ini"
+    installExtensionFromTgz event-2.5.6  "--ini-name event.ini"
 fi
 
 if [[ -z "${EXTENSIONS##*,mongodb,*}" ]]; then
     echo "---------- Install mongodb ----------"
-    installExtensionFromTgz mongodb-1.5.5
+    installExtensionFromTgz mongodb-1.7.4
 fi
 
 if [[ -z "${EXTENSIONS##*,yaf,*}" ]]; then
@@ -560,7 +566,7 @@ if [[ -z "${EXTENSIONS##*,swoole,*}" ]]; then
     isPhpVersionGreaterOrEqual 7 0
 
     if [[ "$?" = "1" ]]; then
-        installExtensionFromTgz swoole-4.4.2
+        installExtensionFromTgz swoole-4.5.2
     else
         installExtensionFromTgz swoole-2.0.11
     fi
@@ -586,7 +592,7 @@ if [[ -z "${EXTENSIONS##*,xhprof,*}" ]]; then
 
     if [[ "$?" = "1" ]]; then
         mkdir xhprof \
-        && tar -xf xhprof-2.1.0.tgz -C xhprof --strip-components=1 \
+        && tar -xf xhprof-2.2.0.tgz -C xhprof --strip-components=1 \
         && ( cd xhprof/extension/ && phpize && ./configure  && make ${MC} && make install ) \
         && docker-php-ext-enable xhprof
     else
@@ -631,6 +637,19 @@ if [[ -z "${EXTENSIONS##*,zookeeper,*}" ]]; then
         docker-php-ext-enable zookeeper
     else
         echo "---------- PHP Version>= 7.0----------"
+    fi
+fi
+
+if [[ -z "${EXTENSIONS##*,phalcon,*}" ]]; then
+    echo "---------- Install phalcon ----------"
+    isPhpVersionGreaterOrEqual 7 2
+
+    if [[ "$?" = "1" ]]; then
+        printf "\n" | pecl install phalcon
+        docker-php-ext-enable psr
+        docker-php-ext-enable phalcon
+    else
+        echo "---------- PHP Version>= 7.2----------"
     fi
 fi
 

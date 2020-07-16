@@ -108,7 +108,7 @@ do_install(){
   	cd dnmp
 	cp env.sample .env 
 
-	tar -zxvf ./services/php/extensions.tar.gz
+	# tar -zxvf ./services/php/extensions.tar.gz
 
 
 	if [ "${DSelect}" = "1" ]; then

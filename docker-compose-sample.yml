@@ -4,7 +4,7 @@ services:
     build:
       context: ./services/nginx
       args:
-        NGINX_VERSION: ${NGINX_VERSION}
+        NGINX_VERSION: nginx:${NGINX_VERSION}
         CONTAINER_PACKAGE_URL: ${CONTAINER_PACKAGE_URL}
         NGINX_INSTALL_APPS: ${NGINX_INSTALL_APPS}
     container_name: nginx
@@ -35,44 +35,28 @@ services:
         TZ: "$TZ"
     container_name: php
     volumes:
-      - ${SOURCE_DIR}:/www/:rw
-      - ${PHP_PHP_CONF_FILE}:/usr/local/etc/php/php.ini:rw
-      - ${PHP_FPM_CONF_FILE}:/usr/local/etc/php-fpm.d/www.conf:rw
-      - ${PHP_LOG_DIR}:/var/log/php:rw
+      - ${SOURCE_DIR}:/www/:cached
+      - ${PHP_PHP_CONF_FILE}:/usr/local/etc/php/php.ini:cached
+      - ${PHP_FPM_CONF_FILE}:/usr/local/etc/php-fpm.d/www.conf:cached
+      - ${PHP_LOG_DIR}:/var/log/php:cached
       - ${DATA_DIR}/composer:/tmp/composer
+      - ${SUPERVISOR_LOG}:/var/log/supervisor/:rw
+      - ${SUPERVISOR_CONFIG}:/etc/supervisor/conf.d/:rw
+      - ${SUPERVISOR_CONF_FILE}:/etc/supervisor/supervisord.conf:ro
     ports:
       - "${XDEBUG_HOST_PORT}:${XDEBUG_HOST_PORT}"
       - "${SWOOLE_HOST_PORT}:${SWOOLE_HOST_PORT}"
+      - "${SUPERVISOR_HOST_PORT_C}:9001"
     restart: always
     cap_add:
       - SYS_PTRACE
+    command:
+      - /bin/sh
+      - -c
+      - |
+        supervisord -n -c /etc/supervisor/supervisord.conf
     networks:
       - default
-
-  # supervisor:
-  #   build:
-  #     context: ./services/supervisor
-  #     args:
-  #       ALPINE_VERSION: alpine:${ALPINE_VERSION}
-  #       TZ: "$TZ"
-  #   container_name: supervisor
-  #   ports:
-  #     - "${SUPERVISOR_HOST_PORT_C}:9001"
-  #   volumes:
-  #     - ${SUPERVISOR_LOG}:/var/log/supervisor/:rw
-  #     - ${SUPERVISOR_CONFIG}:/etc/supervisor/conf.d/:rw
-  #     - ${SUPERVISOR_CONF_FILE}:/etc/supervisor/supervisord.conf:ro
-  #   command:
-  #     - /bin/sh
-  #     - -c
-  #     - |
-  #       supervisord -n -c /etc/supervisor/supervisord.conf
-  #   restart: always
-  #   cap_add:
-  #     - SYS_PTRACE
-  #   networks:
-  #     - default
-
 
   mysql:
     image: mysql:${MYSQL_VERSION}
@@ -89,6 +73,21 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
       TZ: "$TZ"
+      
+
+  redis:
+    image: redis:${REDIS_VERSION}
+    container_name: redis
+    ports:
+      - "${REDIS_HOST_PORT}:6379"
+    volumes:
+      - ${REDIS_CONF_FILE}:/etc/redis.conf:ro
+    restart: always
+    entrypoint: ["redis-server", "/etc/redis.conf"]
+    environment:
+      TZ: "$TZ"
+    networks:
+      - default
       
   portainer:
     image: portainer/portainer:latest

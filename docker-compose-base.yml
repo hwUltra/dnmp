@@ -4,7 +4,7 @@ services:
     build:
       context: ./services/nginx
       args:
-        NGINX_VERSION: ${NGINX_VERSION}
+        NGINX_VERSION: nginx:${NGINX_VERSION}
         CONTAINER_PACKAGE_URL: ${CONTAINER_PACKAGE_URL}
         NGINX_INSTALL_APPS: ${NGINX_INSTALL_APPS}
     container_name: nginx
@@ -54,6 +54,7 @@ services:
       - /bin/sh
       - -c
       - |
+        php-fpm
         supervisord -n -c /etc/supervisor/supervisord.conf
     networks:
       - default

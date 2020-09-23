@@ -46,7 +46,6 @@ services:
     ports:
       - "${XDEBUG_HOST_PORT}:${XDEBUG_HOST_PORT}"
       - "${SWOOLE_HOST_PORT}:${SWOOLE_HOST_PORT}"
-      - "${SUPERVISOR_HOST_PORT_C}:9001"
     restart: always
     cap_add:
       - SYS_PTRACE
@@ -88,18 +87,7 @@ services:
       TZ: "$TZ"
     networks:
       - default
-      
-  portainer:
-    image: portainer/portainer:latest
-    container_name: portainer
-    ports:
-      - "${PORTAINER_HOST_PORT}:9000"
-    restart: always
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:cached
-      - ${PORTAINER_DATA_DIR}:/data:cached
-    networks:
-      - default 
+
 
 
 networks:

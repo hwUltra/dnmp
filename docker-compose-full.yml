@@ -46,7 +46,6 @@ services:
     ports:
       - "${XDEBUG_HOST_PORT}:${XDEBUG_HOST_PORT}"
       - "${SWOOLE_HOST_PORT}:${SWOOLE_HOST_PORT}"
-      - "${SUPERVISOR_HOST_PORT_C}:9001"
     restart: always
     cap_add:
       - SYS_PTRACE

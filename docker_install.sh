@@ -39,10 +39,10 @@ Install_Check(){
 
 	D_Info=('简化版' '基础版本' '完全版')
     if [ -z ${DSelect} ]; then
-        DSelect="2"
+        DSelect="1"
         echo "You have 3 options for your dnmp install."
-        echo "1: Install ${D_Info[0]}"
-        echo "2: Install ${D_Info[1]} (Default)"
+        echo "1: Install ${D_Info[0]} (Default)"
+        echo "2: Install ${D_Info[1]} (基础+jenkins)"
         echo "3: Install ${D_Info[2]}"
         read -p "Enter your choice (1, 2, 3): " DSelect
     fi
@@ -106,17 +106,20 @@ do_install(){
 	cd $setup_path
 	git clone https://github.com/skywalkerwei/dnmp.git
   	cd dnmp
-	cp env.sample .env 
+	
 
 	# tar -zxvf ./services/php/extensions.tar.gz
 
 
 	if [ "${DSelect}" = "1" ]; then
         cp -f  docker-compose-sample.yml  docker-compose.yml
+		cp env.sample .env 
 	elif [ "${DSelect}" = "2" ]; then
         cp -f  docker-compose-base.yml  docker-compose.yml
+		cp env.jenkins .env 
 	elif [ "${DSelect}" = "3" ]; then
         cp -f  docker-compose-full.yml  docker-compose.yml 
+		cp env.jenkins .env 
     fi
 
 	docker-compose up

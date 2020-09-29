@@ -58,6 +58,7 @@ services:
     networks:
       - default
 
+
   # node:
   #   image: node:${NODE_VERSION}
   #   environment:
@@ -70,6 +71,21 @@ services:
   #     - default
   #   stdin_open: true
   #   tty: true    
+
+
+
+  jenkins:
+    image: jenkinsci/blueocean
+    container_name: jenkins
+    ports:
+      - "${Jenkins_HOST_PORT}:8080"
+      - '50000:50000'
+    environment:
+      TZ: "$TZ"
+    volumes:
+      - ${Jenkins_DIR}:/var/jenkins_home
+    networks:
+      - default
 
 
   mysql:

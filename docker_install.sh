@@ -60,6 +60,13 @@ do_install(){
 	rm -rf /etc/localtime
 	ln -s /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 
+	if command_exists unzip; then
+		echo "unzip 已安装"
+	else
+		yum -y install unzip
+	fi
+
+
 	if command_exists docker; then
 		echo "docker 已安装"
 	else
@@ -107,7 +114,7 @@ do_install(){
 	git clone https://github.com/skywalkerwei/dnmp.git
   	cd dnmp
 	
-
+	unzip ./services/php/extensions.zip
 	# tar -zxvf ./services/php/extensions.tar.gz
 
 

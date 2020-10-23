@@ -43,9 +43,9 @@ services:
       - ${SUPERVISOR_LOG}:/var/log/supervisor/:rw
       - ${SUPERVISOR_CONFIG}:/etc/supervisor/conf.d/:rw
       - ${SUPERVISOR_CONF_FILE}:/etc/supervisor/supervisord.conf:ro
-    ports:
-      - "${XDEBUG_HOST_PORT}:${XDEBUG_HOST_PORT}"
-      - "${SWOOLE_HOST_PORT}:${SWOOLE_HOST_PORT}"
+    # ports:
+    #   - "${XDEBUG_HOST_PORT}:${XDEBUG_HOST_PORT}"
+    #   - "${SWOOLE_HOST_PORT}:${SWOOLE_HOST_PORT}"
     restart: always
     cap_add:
       - SYS_PTRACE

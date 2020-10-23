@@ -114,7 +114,7 @@ do_install(){
 	git clone https://github.com/skywalkerwei/dnmp.git
   	cd dnmp
 	
-	unzip ./services/php/extensions.zip
+	# unzip ./services/php/extensions.zip
 	# tar -zxvf ./services/php/extensions.tar.gz
 
 

@@ -260,6 +260,16 @@ services:
     networks:
       - default 
 
+  gogs:
+    image: gogs/gogs:latest
+    container_name: gogs
+    ports:
+      - "11022:22"
+      - "3000:3000"
+    volumes:
+      - ./data/gogs:/data
+    networks:
+      - default 
 
 networks:
   default:

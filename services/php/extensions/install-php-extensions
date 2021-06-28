@@ -580,7 +580,7 @@ buildRequiredPackageLists() {
 				fi
 				;;
 			imagick@alpine)
-				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent imagemagick"
+				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent imagemagick libgomp"
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile imagemagick-dev"
 				;;
 			imagick@debian)
@@ -1682,26 +1682,6 @@ installRemoteModule() {
 				fi
 			fi
 			;;
-		imagick)
-			if test $PHP_MAJMIN_VERSION -ge 800; then
-				if test -z "$installRemoteModule_version"; then
-					installRemoteModule_version=132a11fd26675db9eb9f0e9a3e2887c161875206
-				fi
-				if test "${installRemoteModule_version%.*}" = "$installRemoteModule_version"; then
-					installRemoteModule_displayVersion="$installRemoteModule_version"
-				else
-					installRemoteModule_displayVersion="git--master-$installRemoteModule_version"
-				fi
-				installRemoteModule_src="$(getPackageSource https://codeload.github.com/Imagick/imagick/tar.gz/$installRemoteModule_version)"
-				cd -- "$installRemoteModule_src"
-				sed -Ei "s/^([ \t]*#define[ \t]+PHP_IMAGICK_VERSION[ \t]+\")@PACKAGE_VERSION@(\")/\1git--master-$installRemoteModule_displayVersion\2/" php_imagick.h
-				phpize
-				./configure
-				make -j$(getProcessorCount)
-				make install
-				installRemoteModule_manuallyInstalled=1
-			fi
-			;;
 		inotify)
 			if test -z "$installRemoteModule_version"; then
 				if test $PHP_MAJMIN_VERSION -le 506; then
@@ -1722,6 +1702,19 @@ installRemoteModule() {
 			installRemoteModule_so=$(php -r "printf('ioncube_loader_lin_%s.%s%s.so', PHP_MAJOR_VERSION, PHP_MINOR_VERSION, ZEND_THREAD_SAFE ? '_ts' : '');")
 			cp "$installRemoteModule_src/$installRemoteModule_so" "$(getPHPExtensionsDir)/$installRemoteModule_module.so"
 			installRemoteModule_manuallyInstalled=1
+			;;
+		lzf)
+			if test -z "$installRemoteModule_version" || test $(compareVersions "$installRemoteModule_version" '1.5.0') -ge 0; then
+				# Sacrifice speed in favour of compression ratio?
+				case "${IPE_LZF_BETTERCOMPRESSION:-}" in
+					1 | y* | Y*)
+						addConfigureOption 'enable-lzf-better-compression' 'yes'
+						;;
+					*)
+						addConfigureOption 'enable-lzf-better-compression' 'no'
+						;;
+				esac
+			fi
 			;;
 		mailparse)
 			if test -z "$installRemoteModule_version"; then
@@ -1811,23 +1804,8 @@ installRemoteModule() {
 			fi
 			;;
 		opencensus)
-			if test $PHP_MAJMIN_VERSION -le 702; then
-				if test -z "$installRemoteModule_version"; then
-					installRemoteModule_version=alpha
-				fi
-			else
-				installRemoteModule_manuallyInstalled=1
-				if test -z "$installRemoteModule_version"; then
-					installRemoteModule_src="$(getPackageSource https://pecl.php.net/get/opencensus)"
-				else
-					installRemoteModule_src="$(getPackageSource https://pecl.php.net/get/opencensus-$installRemoteModule_version)"
-				fi
-				cd "$installRemoteModule_src"/opencensus-*
-				find . -name '*.c' -type f -exec sed -i 's/\bZVAL_DESTRUCTOR\b/zval_dtor/g' {} +
-				phpize
-				./configure
-				make install
-				cd - >/dev/null
+			if test -z "$installRemoteModule_version"; then
+				installRemoteModule_version=alpha
 			fi
 			;;
 		parallel)
@@ -2147,8 +2125,6 @@ installRemoteModule() {
 			if test -z "$installRemoteModule_version"; then
 				if test $PHP_MAJMIN_VERSION -le 703; then
 					installRemoteModule_version=2.2.3
-				elif test $PHP_MAJMIN_VERSION -ge 800; then
-					installRemoteModule_version=beta
 				fi
 			fi
 			;;
@@ -2299,9 +2275,6 @@ configureInstaller() {
 			continue
 		fi
 		if test "$PHP_MODULE_TO_INSTALL" = 'amqp' && test $PHP_MAJMIN_VERSION -ge 800; then
-			continue
-		fi
-		if test "$PHP_MODULE_TO_INSTALL" = 'imagick' && test $PHP_MAJMIN_VERSION -ge 800; then
 			continue
 		fi
 		if ! stringInList "$PHP_MODULE_TO_INSTALL" "$BUNDLED_MODULES"; then

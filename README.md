@@ -147,48 +147,26 @@ $ docker-compose build          # 重建全部服务
 
 ### 3.1 切换PHP版本
 
-默认情况下，我们同时创建 **PHP5.6和PHP7.3** 两个PHP版本的容器，
-
-切换PHP仅需修改相应站点 Nginx 配置的`fastcgi_pass`选项，
-
-例如，示例的 [http://localhost](http://localhost) 用的是PHP5.6，Nginx 配置：
+PHP的很多功能都是通过扩展实现，而安装扩展是一个略费时间的过程，
+所以，除PHP内置扩展外，在`env.sample`文件中我们仅默认安装少量扩展，
+如果要安装更多扩展，请打开你的`.env`文件修改如下的PHP配置，
+增加需要的PHP扩展：
+```bash
+PHP_EXTENSIONS=pdo_mysql,opcache,redis       # PHP 要安装的扩展列表，英文逗号隔开
+PHP_EXTENSIONS=opcache,redis                 # PHP 要安装的扩展列表，英文逗号隔开
 ```
-    fastcgi_pass   php56:9000;
+然后重新build PHP镜像。
+```bash
+docker-compose build php
 ```
-要改用PHP7.3，修改为：
-```
-    fastcgi_pass   php:9000;
-```
-再**重启 Nginx** 生效。
+可用的扩展请看同文件的`env.sample`注释块说明。
 
+### 3.3 快速安装php扩展
 
-### 3.2 php怎么安装扩展
+```sh
+docker exec -it php /bin/sh
 
-​    安装扩展的命令 : 
-
-​    例如: 我们需要安装memcached的扩展：
-
--    先进入php对应的容器：
-
-     >docker  exec -it  dnmp-php sh
-
-
--   然后输入以下三行安装的命令   （该命令在dockerfile中)：
-
-     >apt install -y libmemcached-dev zlib1g-dev  
-
-     >pecl install memcached   
-
-     >docker-php-ext-enable memcached 
-
-
-### 3.3 composer管理
-执行下列命令：
-> wget https://install.phpcomposer.com/composer.phar -O /usr/local/bin/composer
->
-> chmod a+x /usr/local/bin/composer
->
-> composer config -g repo.packagist composer https://mirrors.aliyun.com/composer/
+install-php-extensions memcached 
 
 
 

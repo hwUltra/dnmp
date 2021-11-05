@@ -11,9 +11,8 @@ DNMP（Docker + Nginx + MySQL + PHP7/5 + Redis）是一款全功能的**LNMP一�
     - [2.5 docker管理Crontab](#25-docker管理crontab)
     - [2.6 docker管理webSocket ](#26-docker管理websocket)
 - [3.php相关管理](#3php相关管理)
-    - [3.1 php切换版本](#31-切换php版本)
-    - [3.2 php安装扩展](#32-php怎么安装扩展)
-    - [3.3 composer管理](#33-composer管理)
+    - [3.1 php添加扩展](#31-php添加扩展)
+    - [3.2 php安装扩展](#32-php安装扩展)
 - [4.nginx站点的配置](#4nginx站点的配置)
 - [5.使用Log](#5使用log)
     - [5.1 Nginx日志](#51-nginx日志)
@@ -145,7 +144,7 @@ $ docker-compose build          # 重建全部服务
 
 ## 3.php相关管理
 
-### 3.1 切换PHP版本
+### 3.1 php扩展安装
 
 PHP的很多功能都是通过扩展实现，而安装扩展是一个略费时间的过程，
 所以，除PHP内置扩展外，在`env.sample`文件中我们仅默认安装少量扩展，
@@ -161,12 +160,13 @@ docker-compose build php
 ```
 可用的扩展请看同文件的`env.sample`注释块说明。
 
-### 3.3 快速安装php扩展
+### 3.2 快速安装php扩展
 
 ```sh
 docker exec -it php /bin/sh
 
 install-php-extensions memcached 
+```
 
 
 

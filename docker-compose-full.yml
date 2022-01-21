@@ -271,5 +271,20 @@ services:
     networks:
       - default 
 
+   # node:
+  #   image: node:${NODE_VERSION}
+  #   environment:
+  #     - NODE_ENV=production
+  #   container_name: node
+  #   restart: always  
+  #   volumes:
+  #     - ${SOURCE_DIR}:/www/:rw
+  #   expose:
+  #     - "6001"
+  #   networks:
+  #     - default
+  #   stdin_open: true
+  #   tty: true       
+
 networks:
   default:

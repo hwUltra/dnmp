@@ -30,6 +30,37 @@ services:
     networks:
       - default
 
+  php:
+    build:
+      context: ./services/php
+      args:
+        PHP_VERSION: php:${PHP_VERSION}-fpm-alpine
+        CONTAINER_PACKAGE_URL: ${CONTAINER_PACKAGE_URL}
+        PHP_EXTENSIONS: ${PHP_EXTENSIONS}
+        TZ: "$TZ"
+    container_name: php
+    volumes:
+      - ${SOURCE_DIR}:/www/:cached
+      - ${PHP_PHP_CONF_FILE}:/usr/local/etc/php/php.ini:cached
+      - ${PHP_FPM_CONF_FILE}:/usr/local/etc/php-fpm.d/www.conf:cached
+      - ${PHP_LOG_DIR}:/var/log/php:cached
+      - ${DATA_DIR}/composer:/tmp/composer
+      - ${SUPERVISOR_LOG}:/var/log/supervisor/:rw
+      - ${SUPERVISOR_CONFIG}:/etc/supervisor/conf.d/:rw
+      - ${SUPERVISOR_CONF_FILE}:/etc/supervisor/supervisord.conf:ro
+    ports:
+      - "${SUPERVISOR_HOST_PORT_C}:${SUPERVISOR_HOST_PORT_C}"
+    restart: always
+    cap_add:
+      - SYS_PTRACE
+    command:
+      - /bin/sh
+      - -c
+      - |
+        supervisord -n -c /etc/supervisor/supervisord.conf
+    networks:
+      - default
+
   mysql:
     image: mysql:${MYSQL_VERSION}
     container_name: mysql
@@ -70,14 +101,11 @@ services:
     volumes:                             # 设置挂载目录
       - ${SOURCE_DIR}:/usr/src/code     # 引用 .env 配置中 SOURCE_DIR 变量，将宿主机上代码存放的目录挂载到容器中 /usr/src/code 目录
     ports:                               # 设置端口映射
-      - "8000:8000"
-      - "8001:8001"
-      - "8002:8002"
-      - "8003:8003"
-      - "9000:9000"
-      - "9001:9001"
-      - "9002:9002"
-      - "9003:9003"
+      - "6100:6100"
+      - "6101:6101"
+      - "6102:6102"
+      - "6103:6103"
+      - "6104:6104"
     stdin_open: true                     # 打开标准输入，可以接受外部输入
     tty: true
     networks:
@@ -98,9 +126,11 @@ services:
       - default
     restart: always
 
+
   prometheus:
     build:
       context: ./services/prometheus
+    container_name: prometheus
     environment:
       - TZ=${TZ}
     volumes:
@@ -115,6 +145,7 @@ services:
   grafana:
     build:
       context: ./services/grafana
+    container_name: grafana
     environment:
       - TZ=${TZ}
     ports:
@@ -126,6 +157,7 @@ services:
   jaeger:
     build:
       context: ./services/jaeger
+    container_name: jaeger
     environment:
       - TZ=${TZ}
     ports:
@@ -137,6 +169,7 @@ services:
   dtm:
     build:
       context: ./services/dtm
+    container_name: dtm
     environment:
       - TZ=${TZ}
     entrypoint:
@@ -150,7 +183,7 @@ services:
     networks:
       - default
     restart: always
-        
+
   portainer:
     image: portainer/portainer:latest
     container_name: portainer

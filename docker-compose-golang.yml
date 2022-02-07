@@ -150,7 +150,18 @@ services:
     networks:
       - default
     restart: always
-        
+
+  beanstalkd:
+    image: schickling/beanstalkd
+    container_name: beanstalkd
+    environment:
+      - TZ=${TZ}
+    ports:
+      - "${BEANSTALKD_PORT}:11300"                     # 设置容器16686端口映射指定宿主机端口，用于宿主机访问可视化web
+    networks:
+      - default
+    restart: always          
+
   portainer:
     image: portainer/portainer:latest
     container_name: portainer

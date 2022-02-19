@@ -59,6 +59,27 @@ services:
     networks:
       - default
 
+  # php7:
+  #   build:
+  #     context: ./services/php7
+  #     args:
+  #       PHP_VERSION: php:${PHP7_VERSION}-fpm-alpine3.13
+  #       CONTAINER_PACKAGE_URL: ${CONTAINER_PACKAGE_URL}
+  #       PHP_EXTENSIONS: ${PHP7_EXTENSIONS}
+  #       TZ: "$TZ"
+  #   container_name: php7
+  #   volumes:
+  #     - ${SOURCE_DIR}:/www/:cached
+  #     - ${PHP7_PHP_CONF_FILE}:/usr/local/etc/php/php.ini:cached
+  #     - ${PHP7_FPM_CONF_FILE}:/usr/local/etc/php-fpm.d/www.conf:cached
+  #     - ${PHP7_LOG_DIR}:/var/log/php:cached
+  #     - ${DATA_DIR}/composer:/tmp/composer
+  #   restart: always
+  #   cap_add:
+  #     - SYS_PTRACE
+  #   networks:
+  #     - default
+
 
   mysql:
     image: mysql:${MYSQL_VERSION}
@@ -101,89 +122,20 @@ services:
       - ${SOURCE_DIR}:/usr/src/code     # 引用 .env 配置中 SOURCE_DIR 变量，将宿主机上代码存放的目录挂载到容器中 /usr/src/code 目录
     ports:                               # 设置端口映射
       - "8000:8000"
-      - "8001:8001"
-      - "8002:8002"
-      - "8003:8003"
-      - "9000:9000"
-      - "9001:9001"
-      - "9002:9002"
-      - "9003:9003"
     stdin_open: true                     # 打开标准输入，可以接受外部输入
     tty: true
     networks:
       - default
     restart: always                      # 指定容器退出后的重启策略为始终重启
 
-
-  etcd:                                  # 自定义容器名称
-    build:
-      context: ./services/etcd                    # 指定构建使用的 Dockerfile 文件
-    container_name: etcd
-    environment:
-      - TZ=${TZ}
-      - ALLOW_NONE_AUTHENTICATION=yes
-    ports:                               # 设置端口映射
-      - "${ETCD_PORT}:2379"
-    networks:
-      - default
-    restart: always
-
-  prometheus:
-    build:
-      context: ./services/prometheus
-    container_name: prometheus
-    environment:
-      - TZ=${TZ}
-    volumes:
-      - ./services/prometheus/prometheus.yml:/opt/bitnami/prometheus/conf/prometheus.yml  # 将 prometheus 配置文件挂载到容器里
+  remix:
+    image: remixproject/remix-ide:latest
+    container_name: remix
     ports:
-      - "${PROMETHEUS_PORT}:9090"                     # 设置容器9090端口映射指定宿主机端口，用于宿主机访问可视化web
-    networks:
-      - default
+      - "${REXIX_HOST_PORT}:80"
     restart: always
-
-
-  grafana:
-    build:
-      context: ./services/grafana
-    container_name: grafana
-    environment:
-      - TZ=${TZ}
-    ports:
-      - "${GRAFANA_PORT}:3000"                        # 设置容器3000端口映射指定宿主机端口，用于宿主机访问可视化web
     networks:
-      - default
-    restart: always
-
-  jaeger:
-    build:
-      context: ./services/jaeger
-    container_name: jaeger
-    environment:
-      - TZ=${TZ}
-    ports:
-      - "${JAEGER_PORT}:16686"                        # 设置容器16686端口映射指定宿主机端口，用于宿主机访问可视化web
-    networks:
-      - default
-    restart: always
-
-  dtm:
-    build:
-      context: ./services/dtm
-    container_name: dtm
-    environment:
-      - TZ=${TZ}
-    entrypoint:
-      - "/app/dtm/dtm"
-      - "-c=/app/dtm/configs/config.yaml"
-    volumes:
-      - ./services/dtm/config.yml:/app/dtm/configs/config.yaml # 将 dtm 配置文件挂载到容器里
-    ports:
-      - "${DTM_HTTP_PORT}:36789"
-      - "${DTM_GRPC_PORT}:36790"
-    networks:
-      - default
-    restart: always
+      - default 
         
   portainer:
     image: portainer/portainer:latest

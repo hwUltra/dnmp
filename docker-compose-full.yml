@@ -274,7 +274,7 @@ services:
       - "${LOGSTASH_HOST_PORT_S}:5044"
 
   portainer:
-    image: portainer/portainer:latest
+    image: ${PORTAINER_VERSION}
     container_name: portainer
     ports:
       - "${PORTAINER_HOST_PORT}:9000"

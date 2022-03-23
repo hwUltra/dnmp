@@ -519,8 +519,9 @@ fi
 
 if [[ -z "${EXTENSIONS##*,redis,*}" ]]; then
     echo "---------- Install redis ----------"
-    pecl install redis
-    docker-php-ext-enable redis
+     installExtensionFromTgz redis-5.3.7
+    # pecl install redis
+    # docker-php-ext-enable redis
 fi
 
 if [[ -z "${EXTENSIONS##*,apcu,*}" ]]; then

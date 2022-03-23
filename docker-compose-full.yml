@@ -276,7 +276,7 @@ services:
     networks:
       - default 
 
-   # node:
+  # node:
   #   image: node:${NODE_VERSION}
   #   environment:
   #     - NODE_ENV=production

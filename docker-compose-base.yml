@@ -129,7 +129,7 @@ services:
     restart: always                      # 指定容器退出后的重启策略为始终重启
 
   remix:
-    image: remixproject/remix-ide:latest
+    image: remixproject/remix-ide:remix_live
     container_name: remix
     ports:
       - "${REXIX_HOST_PORT}:80"

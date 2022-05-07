@@ -121,7 +121,6 @@ services:
 #    networks:
 #      - default
 
-
   jenkins:
     image: jenkinsci/blueocean
     container_name: jenkins
@@ -314,6 +313,31 @@ services:
       - ./data/gogs:/data
     networks:
       - default 
+
+
+  gitea:
+    image: gitea/gitea:1.16.6
+    container_name: gitea
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - DB_TYPE=mysql
+      - DB_HOST=mysql:3306
+      - DB_NAME=gitea
+      - DB_USER=root
+      - DB_PASSWD=123456
+    restart: always
+    networks:
+      - default
+    volumes:
+      - ./gitea:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+       - "3000:3000"
+       - "222:22"
+    depends_on:
+       - mysql
 
   # node:
   #   image: node:${NODE_VERSION}

@@ -101,3 +101,20 @@ services:
       - ALLOW_PLAINTEXT_LISTENER=yes
     networks:
       - default
+  
+  nacos:
+    image: nacos/nacos-server:v2.1.0
+    environment:
+      MODE: standalone
+      SPRING_DATASOURCE_PLATFORM: mysql
+      MYSQL_SERVICE_HOST: mysql
+      MYSQL_SERVICE_DB_NAME: nacos_config
+      MYSQL_SERVICE_PORT: 3306
+      MYSQL_SERVICE_USER: root
+      MYSQL_SERVICE_PASSWORD: 123456
+      MYSQL_SERVICE_DB_PARAM: characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useSSL=false
+    ports:
+      - "8848:8848"
+    restart: on-failure
+    networks:
+      - default

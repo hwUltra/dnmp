@@ -2,7 +2,7 @@
 
 # This script wraps docker-php-ext-install, properly configuring the system.
 #
-# Copyright (c) Michele Locati, 2018-2021
+# Copyright (c) Michele Locati, 2018-2023
 #
 # Source: https://github.com/mlocati/docker-php-extension-installer
 #
@@ -11,6 +11,10 @@
 # Let's set a sane environment
 set -o errexit
 set -o nounset
+
+if test "${IPE_DEBUG:-}" = "1"; then
+	set -x
+fi
 
 if ! which docker-php-ext-configure >/dev/null || ! which docker-php-ext-enable >/dev/null || ! which docker-php-ext-install >/dev/null || ! which docker-php-source >/dev/null; then
 	printf 'The script %s is meant to be used with official Docker PHP Images - https://hub.docker.com/_/php\n' "$0" >&2
@@ -219,11 +223,11 @@ set_error_handler(
 $xpath = new DOMXpath($doc);
 $xpath->registerNamespace('v20', 'http://pear.php.net/dtd/package-2.0');
 $xpath->registerNamespace('v21', 'http://pear.php.net/dtd/package-2.1');
-if ($xpath->query('/v20:package/v20:dependencies')->count() === 1) {
+if ($xpath->query('/v20:package/v20:dependencies')->length === 1) {
 	$ns = 'v20:';
-} elseif ($xpath->query('/v21:package/v21:dependencies')->count() === 1) {
+} elseif ($xpath->query('/v21:package/v21:dependencies')->length === 1) {
 	$ns = 'v21:';
-} elseif ($xpath->query('/package')->count() === 1) {
+} elseif ($xpath->query('/package')->length === 1) {
 	$ns = '';
 } else {
 	fwrite(STDERR, "Unsupported namespace of the XML of package version details\n");
@@ -403,6 +407,32 @@ resolveWantedPHPModuleVersion() {
 	exit 1
 }
 
+# Get the actual version of a PECL pmodule, resolving 'latest', 'stable', 'beta', 'alpha', 'devel'.
+#
+# Arguments:
+#   $1: the module name as known on the PECL archive
+#   $2: the version to be resolved
+# Output:
+#   $2 itself if $1 is not 'latest', 'stable', 'beta', 'alpha', or 'devel', the actual version otherwise
+resolvePeclStabilityVersion() {
+	case "$2" in
+		latest | stable | beta | alpha | devel) ;;
+		*)
+			printf '%s' "$2"
+			return
+			;;
+	esac
+	peclStabilityFlagToVersion_url="http://pecl.php.net/rest/r/$1/$2.txt"
+	if ! peclStabilityFlagToVersion_result="$(curl -sSLf "$peclStabilityFlagToVersion_url")"; then
+		peclStabilityFlagToVersion_result=''
+	fi
+	if test -z "$peclStabilityFlagToVersion_result"; then
+		printf 'Failed to resolve the PECL package version "%s" of %s from %s\n' "$2" "$1" "$peclStabilityFlagToVersion_url" >&2
+		exit 1
+	fi
+	printf '%s' "$peclStabilityFlagToVersion_result"
+}
+
 # Set these variables:
 # - PHP_PREINSTALLED_MODULES the normalized list of PHP modules installed before running this script
 setPHPPreinstalledModules() {
@@ -532,6 +562,10 @@ sortModulesToInstall() {
 	if test $PHP_MAJMIN_VERSION -le 506; then
 		checkRequiredModule event sockets
 	fi
+	# relay requires msgpack
+	checkRequiredModule relay msgpack
+	# relay requires igbinary
+	checkRequiredModule relay igbinary
 	# Some module installation may use sockets if available: move it before other modules
 	if stringInList 'sockets' "$PHP_MODULES_TO_INSTALL"; then
 		PHP_MODULES_TO_INSTALL="$(removeStringFromList 'sockets' "$PHP_MODULES_TO_INSTALL")"
@@ -599,7 +633,7 @@ buildRequiredPackageLists() {
 			apk update
 			;;
 		debian)
-			DEBIAN_FRONTEND=noninteractive apt-get update -q
+			invokeAptGetUpdate
 			;;
 	esac
 	case "$DISTRO_VERSION" in
@@ -661,6 +695,10 @@ buildRequiredPackageLists() {
 				;;
 			bz2@debian)
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libbz2-dev"
+				;;
+			cassandra@alpine)
+				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent cassandra-cpp-driver gmp"
+				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile cassandra-cpp-driver-dev gmp-dev"
 				;;
 			cmark@alpine)
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile cmake"
@@ -744,7 +782,10 @@ buildRequiredPackageLists() {
 					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libwebp"
 					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libwebp-dev"
 					if test $PHP_MAJMIN_VERSION -ge 801; then
-						if isLibaomInstalled && isLibdav1dInstalled && isLibyuvInstalled && isLibavifInstalled; then
+						if test $DISTRO_MAJMIN_VERSION -ge 315; then
+							buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libavif aom-libs libdav1d"
+							buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libavif-dev aom-dev dav1d-dev"
+						elif isLibaomInstalled && isLibdav1dInstalled && isLibyuvInstalled && isLibavifInstalled; then
 							buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libstdc++"
 						else
 							case "${IPE_GD_WITHOUTAVIF:-}" in
@@ -1117,6 +1158,15 @@ buildRequiredPackageLists() {
 					esac
 				fi
 				;;
+			relay@alpine)
+				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent lz4-libs zstd-libs"
+				if test $DISTRO_MAJMIN_VERSION -ge 317; then
+					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libssl1.1"
+				fi
+				;;
+			simdjson@alpine)
+				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libstdc++"
+				;;
 			smbclient@alpine)
 				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libsmbclient"
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile samba-dev"
@@ -1356,6 +1406,12 @@ buildRequiredPackageLists() {
 						;;
 				esac
 				;;
+			zmq@alpine)
+				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent zeromq-dev"
+				;;
+			zmq@debian)
+				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libzmq3-dev"
+				;;
 			zookeeper@alpine)
 				if ! test -f /usr/local/include/zookeeper/zookeeper.h; then
 					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile maven automake libtool openjdk8"
@@ -1442,7 +1498,7 @@ expandPackagesToBeInstalled() {
 			resetIFS
 			;;
 		debian)
-			expandPackagesToBeInstalled_log="$(DEBIAN_FRONTEND=noninteractive apt-get install -sy --no-install-recommends $@ 2>&1 || printf '\nE: apt-get failed\n')"
+			expandPackagesToBeInstalled_log="$(DEBIAN_FRONTEND=noninteractive apt-get install -sy --no-install-recommends $IPE_APTGET_INSTALLOPTIONS $@ 2>&1 || printf '\nE: apt-get failed\n')"
 			if test -n "$(printf '%s' "$expandPackagesToBeInstalled_log" | grep -E '^E:')"; then
 				printf 'FAILED TO LIST THE WHOLE PACKAGE LIST FOR\n' >&2
 				printf '%s ' "$@" >&2
@@ -1612,7 +1668,7 @@ getModuleIniEntryType() {
 #
 # Arguments:
 #   $1: the name of the PHP extension
-#   $3: additional php.ini configuration (optional)
+#   $2: additional php.ini configuration (optional)
 #
 # Output:
 #   The contents of the ini file
@@ -1730,7 +1786,7 @@ installRequiredPackages() {
 			done
 			;;
 		debian)
-			DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -qq -y $PACKAGES_PERSISTENT_NEW $PACKAGES_VOLATILE
+			DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends $IPE_APTGET_INSTALLOPTIONS $PACKAGES_PERSISTENT_NEW $PACKAGES_VOLATILE
 			;;
 	esac
 }
@@ -1899,16 +1955,16 @@ installMicrosoftSqlServerODBC() {
 			if ! test -f /etc/apt/sources.list.d/mssql-release.list; then
 				printf -- '- adding the Microsoft APT source list\n'
 				curl -sSLf https://packages.microsoft.com/config/debian/$DISTRO_VERSION_NUMBER/prod.list >/etc/apt/sources.list.d/mssql-release.list
-				DEBIAN_FRONTEND=noninteractive apt-get -q update
+				invokeAptGetUpdate
 			fi
 			printf -- '- installing the APT package\n'
 			if test $PHP_MAJMIN_VERSION -le 703; then
-				DEBIAN_FRONTEND=noninteractive ACCEPT_EULA=Y apt-get -qy --no-install-recommends install msodbcsql17
+				DEBIAN_FRONTEND=noninteractive ACCEPT_EULA=Y apt-get install -qqy --no-install-recommends $IPE_APTGET_INSTALLOPTIONS msodbcsql17
 			elif test $DISTRO_VERSION_NUMBER -ge 9 && $DISTRO_VERSION_NUMBER -le 11; then
 				# On Debian 9 and 11 we have both msodbcsql17 and msodbcsql18: let's install just one
-				DEBIAN_FRONTEND=noninteractive ACCEPT_EULA=Y apt-get -qy --no-install-recommends install msodbcsql18
+				DEBIAN_FRONTEND=noninteractive ACCEPT_EULA=Y apt-get install -qqy --no-install-recommends $IPE_APTGET_INSTALLOPTIONS msodbcsql18
 			else
-				DEBIAN_FRONTEND=noninteractive ACCEPT_EULA=Y apt-get -qy --no-install-recommends install '^msodbcsql[0-9]+$'
+				DEBIAN_FRONTEND=noninteractive ACCEPT_EULA=Y apt-get install -qqy --no-install-recommends $IPE_APTGET_INSTALLOPTIONS '^msodbcsql[0-9]+$'
 			fi
 			;;
 	esac
@@ -2214,24 +2270,37 @@ EOF
 			elif test $PHP_MAJMIN_VERSION -le 800; then
 				docker-php-ext-configure gd --enable-gd --with-webp --with-jpeg --with-xpm --with-freetype
 			else
-				case "${IPE_GD_WITHOUTAVIF:-}" in
-					1 | y* | Y*) ;;
-					*)
-						if ! isLibaomInstalled; then
-							installLibaom
-						fi
-						if ! isLibdav1dInstalled; then
-							installLibdav1d
-						fi
-						if ! isLibyuvInstalled; then
-							installLibyuv
-						fi
-						if ! isLibavifInstalled; then
-							installLibavif
+				installBundledModule_tmp=0
+				case "$DISTRO" in
+					alpine)
+						if test $DISTRO_MAJMIN_VERSION -ge 315; then
+							installBundledModule_tmp=1
 						fi
 						;;
 				esac
-				if isLibaomInstalled && isLibdav1dInstalled && isLibyuvInstalled && isLibavifInstalled; then
+				if test $installBundledModule_tmp -eq 0; then
+					case "${IPE_GD_WITHOUTAVIF:-}" in
+						1 | y* | Y*) ;;
+						*)
+							if ! isLibaomInstalled; then
+								installLibaom
+							fi
+							if ! isLibdav1dInstalled; then
+								installLibdav1d
+							fi
+							if ! isLibyuvInstalled; then
+								installLibyuv
+							fi
+							if ! isLibavifInstalled; then
+								installLibavif
+							fi
+							;;
+					esac
+					if isLibaomInstalled && isLibdav1dInstalled && isLibyuvInstalled && isLibavifInstalled; then
+						installBundledModule_tmp=1
+					fi
+				fi
+				if test $installBundledModule_tmp -eq 1; then
 					docker-php-ext-configure gd --enable-gd --with-webp --with-jpeg --with-xpm --with-freetype --with-avif
 				else
 					docker-php-ext-configure gd --enable-gd --with-webp --with-jpeg --with-xpm --with-freetype
@@ -2251,7 +2320,7 @@ EOF
 				debian@9)
 					installBundledModule_tmp="$(pwd)"
 					cd /tmp
-					apt-get download libc-client2007e-dev
+					apt-get download $IPE_APTGET_INSTALLOPTIONS libc-client2007e-dev
 					dpkg -i --ignore-depends=libssl-dev libc-client2007e-dev*
 					rm libc-client2007e-dev*
 					cd "$installBundledModule_tmp"
@@ -2478,6 +2547,15 @@ installRemoteModule() {
 			installRemoteModule_manuallyInstalled=1
 			installRemoteModule_ini_extra="$(printf '%sblackfire.agent_socket=tcp://blackfire:8307\n' "$installRemoteModule_ini_extra")"
 			;;
+		cassandra)
+			installRemoteModule_src="$(getPackageSource https://github.com/nano-interactive/ext-cassandra/tarball/1cf12c5ce49ed43a2c449bee4b7b23ce02a37bf0)"
+			cd "$installRemoteModule_src/ext"
+			phpize
+			./configure
+			make -j$(getProcessorCount) install
+			cd - >/dev/null
+			installRemoteModule_manuallyInstalled=1
+			;;
 		cmark)
 			if test -z "$installRemoteModule_version"; then
 				if test $PHP_MAJMIN_VERSION -le 701; then
@@ -2488,7 +2566,7 @@ installRemoteModule() {
 				if test $(compareVersions "$(cmake --version | head -n1 | sed -E 's/^.* //')" '3.7') -lt 0; then
 					installRemoteModule_tmp=0.29.0
 				else
-					installRemoteModule_tmp=0.30.2
+					installRemoteModule_tmp=0.30.3
 				fi
 				cd "$(getPackageSource https://github.com/commonmark/cmark/archive/$installRemoteModule_tmp.tar.gz)"
 				make -s -j$(getProcessorCount) cmake_build
@@ -2542,6 +2620,7 @@ installRemoteModule() {
 			fi
 			;;
 		event)
+			installRemoteModule_version="$(resolvePeclStabilityVersion "$installRemoteModule_module" "$installRemoteModule_version")"
 			if test -z "$installRemoteModule_version" || test $(compareVersions "$installRemoteModule_version" 2.4.0) -ge 0; then
 				# Enable internal debugging in Event
 				addConfigureOption enable-event-debug no
@@ -2603,6 +2682,13 @@ installRemoteModule() {
 			# event must be loaded after sockets
 			installRemoteModule_ini_basename="xx-php-ext-$installRemoteModule_module"
 			;;
+		excimer)
+			if test -z "$installRemoteModule_version"; then
+				if test "$DISTRO" = alpine && test $PHP_MAJMIN_VERSION -le 703; then
+					installRemoteModule_version=1.0.4
+				fi
+			fi
+			;;
 		gearman)
 			if test -z "$installRemoteModule_version"; then
 				if test $PHP_MAJMIN_VERSION -le 506; then
@@ -2612,7 +2698,7 @@ installRemoteModule() {
 			case "$DISTRO" in
 				alpine)
 					if ! test -e /usr/local/include/libgearman/gearman.h || ! test -e /usr/local/lib/libgearman.so; then
-						installRemoteModule_src="$(getPackageSource https://github.com/gearman/gearmand/releases/download/1.1.19.1/gearmand-1.1.19.1.tar.gz)"
+						installRemoteModule_src="$(getPackageSource https://github.com/gearman/gearmand/releases/download/1.1.20/gearmand-1.1.20.tar.gz)"
 						cd -- "$installRemoteModule_src"
 						./configure
 						make -j$(getProcessorCount) install-binPROGRAMS
@@ -2715,10 +2801,13 @@ installRemoteModule() {
 			fi
 			;;
 		ion)
+			if test -z "$installRemoteModule_version"; then
+				installRemoteModule_version=alpha
+			fi
 			if ! test -f /usr/local/lib/libionc.so || ! test -f /usr/local/include/ionc/ion.h; then
 				echo 'Installing ion-c... '
 				installRemoteModule_src="$(mktemp -p /tmp/src -d)"
-				git clone -q -c advice.detachedHead=false --depth 1 --branch v1.0.6 https://github.com/amzn/ion-c.git "$installRemoteModule_src/ion"
+				git clone -q -c advice.detachedHead=false --depth 1 --branch v1.1.1 https://github.com/amzn/ion-c.git "$installRemoteModule_src/ion"
 				(
 					cd "$installRemoteModule_src/ion"
 					git submodule init -q
@@ -2770,6 +2859,8 @@ installRemoteModule() {
 				if test $PHP_MAJMIN_VERSION -lt 702; then
 					installRemoteModule_version=1.6.8
 				fi
+			else
+				installRemoteModule_version="$(resolvePeclStabilityVersion "$installRemoteModule_module" "$installRemoteModule_version")"
 			fi
 			if test -z "$installRemoteModule_version" || test $(compareVersions "$installRemoteModule_version" '1.5.0') -ge 0; then
 				# Sacrifice speed in favour of compression ratio?
@@ -2787,6 +2878,8 @@ installRemoteModule() {
 			if test -z "$installRemoteModule_version"; then
 				if test $PHP_MAJMIN_VERSION -le 506; then
 					installRemoteModule_version=2.1.6
+				elif test $PHP_MAJMIN_VERSION -le 702; then
+					installRemoteModule_version=3.1.3
 				fi
 			fi
 			;;
@@ -2804,6 +2897,8 @@ installRemoteModule() {
 				if test $PHP_MAJMIN_VERSION -le 506; then
 					installRemoteModule_version=2.2.0
 				fi
+			else
+				installRemoteModule_version="$(resolvePeclStabilityVersion "$installRemoteModule_module" "$installRemoteModule_version")"
 			fi
 			# Set the path to libmemcached install prefix
 			addConfigureOption 'with-libmemcached-dir' 'no'
@@ -2846,6 +2941,7 @@ installRemoteModule() {
 			fi
 			;;
 		mongo)
+			installRemoteModule_version="$(resolvePeclStabilityVersion "$installRemoteModule_module" "$installRemoteModule_version")"
 			if test -z "$installRemoteModule_version" || test $(compareVersions "$installRemoteModule_version" '1.5.0') -ge 0; then
 				# Build with Cyrus SASL (MongoDB Enterprise Authentication) support?
 				addConfigureOption '-with-mongo-sasl' 'yes'
@@ -2893,6 +2989,8 @@ installRemoteModule() {
 				if test $PHP_MAJMIN_VERSION -lt 704; then
 					installRemoteModule_version=4.10.0
 				fi
+			else
+				installRemoteModule_version="$(resolvePeclStabilityVersion "$installRemoteModule_module" "$installRemoteModule_version")"
 			fi
 			if php --ri sockets >/dev/null 2>/dev/null; then
 				installRemoteModule_sockets=yes
@@ -2909,19 +3007,28 @@ installRemoteModule() {
 			addConfigureOption enable-http2 yes
 			# enable mysqlnd support?
 			addConfigureOption enable-mysqlnd yes
-			# enable json support?
-			addConfigureOption enable-swoole-json yes
-			# enable curl support?
-			addConfigureOption enable-swoole-curl yes
-			if test -z "$installRemoteModule_version" || test $(compareVersions "$installRemoteModule_version" '4.8.0') -ge 0; then
+			if test -z "$installRemoteModule_version" || test $(compareVersions "$installRemoteModule_version" '22.8.0') -ge 0; then
+				#enable hook curl support?
+				addConfigureOption enable-hook-curl yes
 				# enable postgres support?
 				addConfigureOption with-postgres yes
+			else
+				# enable json support?
+				addConfigureOption enable-swoole-json yes
+				# enable curl support?
+				addConfigureOption enable-swoole-curl yes
+				if test -z "$installRemoteModule_version" || test $(compareVersions "$installRemoteModule_version" '4.8.0') -ge 0; then
+					# enable postgres support?
+					addConfigureOption with-postgres yes
+				fi
 			fi
 			;;
 		parallel)
 			if test -z "$installRemoteModule_version"; then
 				if test $PHP_MAJMIN_VERSION -le 701; then
 					installRemoteModule_version=0.8.3
+				elif test $PHP_MAJMIN_VERSION -le 704; then
+					installRemoteModule_version=1.1.4
 				fi
 			fi
 			;;
@@ -2955,6 +3062,9 @@ installRemoteModule() {
 			if test -z "$installRemoteModule_version"; then
 				if test $PHP_MAJMIN_VERSION -le 506; then
 					installRemoteModule_version=3.12.4
+				else
+					# see https://github.com/protocolbuffers/protobuf/issues/10619
+					installRemoteModule_version=3.21.6
 				fi
 			fi
 			;;
@@ -2973,6 +3083,7 @@ installRemoteModule() {
 			fi
 			;;
 		rdkafka)
+			installRemoteModule_version="$(resolvePeclStabilityVersion "$installRemoteModule_module" "$installRemoteModule_version")"
 			if test -z "$installRemoteModule_version"; then
 				installRemoteModule_version1=''
 				if test $PHP_MAJMIN_VERSION -le 505; then
@@ -3012,6 +3123,8 @@ installRemoteModule() {
 				if test $PHP_MAJMIN_VERSION -le 506; then
 					installRemoteModule_version=4.3.0
 				fi
+			else
+				installRemoteModule_version="$(resolvePeclStabilityVersion "$installRemoteModule_module" "$installRemoteModule_version")"
 			fi
 			# Enable igbinary serializer support?
 			if php --ri igbinary >/dev/null 2>/dev/null; then
@@ -3039,6 +3152,28 @@ installRemoteModule() {
 				# Enable zstd compression support?
 				addConfigureOption 'enable-redis-zstd' 'yes'
 			fi
+			;;
+		relay)
+			if test -z "$installRemoteModule_version"; then
+				installRemoteModule_version="$(curl -sSLf https://builds.r2.relay.so/meta/latest)"
+				installRemoteModule_version="${installRemoteModule_version#v}"
+			fi
+			case $(uname -m) in
+				aarch64 | arm64 | armv8)
+					installRemoteModule_hardware=aarch64
+					;;
+				*)
+					installRemoteModule_hardware=x86-64
+					;;
+			esac
+			printf 'Downloading relay v%s (%s)... ' "$installRemoteModule_version" "$installRemoteModule_hardware"
+			installRemoteModule_url="https://builds.r2.relay.so/v${installRemoteModule_version}/relay-v${installRemoteModule_version}-php${PHP_MAJDOTMIN_VERSION}-${DISTRO}-${installRemoteModule_hardware}.tar.gz"
+			installRemoteModule_src="$(getPackageSource $installRemoteModule_url)"
+			echo 'done.'
+			cp -- "$installRemoteModule_src/relay-pkg.so" "$PHP_EXTDIR/relay.so"
+			sed -i "s/00000000-0000-0000-0000-000000000000/$(cat /proc/sys/kernel/random/uuid)/" "$PHP_EXTDIR/relay.so"
+			installRemoteModule_ini_extra="$(grep -vE '^[ \t]*extension[ \t]*=' $installRemoteModule_src/relay.ini)"
+			installRemoteModule_manuallyInstalled=1
 			;;
 		snappy)
 			if test -z "$installRemoteModule_path"; then
@@ -3098,7 +3233,7 @@ installRemoteModule() {
 		spx)
 			if test -z "$installRemoteModule_path"; then
 				if test -z "$installRemoteModule_version"; then
-					installRemoteModule_version=v0.4.12
+					installRemoteModule_version=v0.4.13
 				fi
 				if test "${installRemoteModule_version%.*}" = "$installRemoteModule_version"; then
 					installRemoteModule_displayVersion="$installRemoteModule_version"
@@ -3128,6 +3263,8 @@ installRemoteModule() {
 					installRemoteModule_version=5.8.1
 				elif test $PHP_MAJMIN_VERSION -le 703; then
 					installRemoteModule_version=5.9.0
+				elif test $PHP_MAJMIN_VERSION -le 704; then
+					installRemoteModule_version=5.10.1
 				fi
 			fi
 			;;
@@ -3167,6 +3304,8 @@ installRemoteModule() {
 				elif test $PHP_MAJMIN_VERSION -le 704; then
 					installRemoteModule_version=4.8.11
 				fi
+			else
+				installRemoteModule_version="$(resolvePeclStabilityVersion "$installRemoteModule_module" "$installRemoteModule_version")"
 			fi
 			if php --ri sockets >/dev/null 2>/dev/null; then
 				installRemoteModule_sockets=yes
@@ -3182,13 +3321,41 @@ installRemoteModule() {
 					fi
 					;;
 			esac
-			if test -z "$installRemoteModule_version" || test $(compareVersions "$installRemoteModule_version" 5.0.0) -ge 0; then
+			if test -z "$installRemoteModule_version" || test $(compareVersions "$installRemoteModule_version" 5.0.1) -ge 0; then
 				# enable sockets supports?
 				addConfigureOption enable-sockets $installRemoteModule_sockets
 				# enable openssl support?
 				addConfigureOption enable-openssl $installRemoteModule_openssl
 				# enable mysqlnd support?
 				addConfigureOption enable-mysqlnd yes
+				# enable curl support?
+				addConfigureOption enable-swoole-curl yes
+				# enable cares support?
+				addConfigureOption enable-cares yes
+				# enable brotli support?
+				addConfigureOption enable-brotli yes
+			elif test $(compareVersions "$installRemoteModule_version" 5.0.0) -ge 0; then
+				# enable sockets supports?
+				addConfigureOption enable-sockets $installRemoteModule_sockets
+				# enable openssl support?
+				addConfigureOption enable-openssl $installRemoteModule_openssl
+				# enable mysqlnd support?
+				addConfigureOption enable-mysqlnd yes
+				# enable curl support?
+				addConfigureOption enable-swoole-curl yes
+				# enable cares support?
+				addConfigureOption enable-cares yes
+			elif test $(compareVersions "$installRemoteModule_version" 4.8.11) -ge 0; then
+				# enable sockets supports?
+				addConfigureOption enable-sockets $installRemoteModule_sockets
+				# enable openssl support?
+				addConfigureOption enable-openssl $installRemoteModule_openssl
+				# enable http2 support?
+				addConfigureOption enable-http2 yes
+				# enable mysqlnd support?
+				addConfigureOption enable-mysqlnd yes
+				# enable json support?
+				addConfigureOption enable-swoole-json yes
 				# enable curl support?
 				addConfigureOption enable-swoole-curl yes
 				# enable cares support?
@@ -3205,16 +3372,7 @@ installRemoteModule() {
 				# enable json support?
 				addConfigureOption enable-swoole-json yes
 				# enable curl support?
-				if test $PHP_MAJMINPAT_VERSION -ne 80000 || test $(compareVersions "$installRemoteModule_version" 4.6.1) -ge 0; then
-					addConfigureOption enable-swoole-curl yes
-				else
-					# https://github.com/swoole/swoole-src/issues/3977#issuecomment-754755521
-					addConfigureOption enable-swoole-curl no
-				fi
-				if test $(compareVersions "$installRemoteModule_version" 4.8.11) -ge 0; then
-					# enable cares support?
-					addConfigureOption enable-cares yes
-				fi
+				addConfigureOption enable-swoole-curl yes
 			elif test $(compareVersions "$installRemoteModule_version" 4.4.0) -ge 0; then
 				# enable sockets supports?
 				addConfigureOption enable-sockets $installRemoteModule_sockets
@@ -3378,6 +3536,8 @@ installRemoteModule() {
 					installRemoteModule_version=2.6.1
 				elif test $PHP_MAJMIN_VERSION -le 701; then
 					installRemoteModule_version=2.9.8
+				elif test $PHP_MAJMIN_VERSION -le 704; then
+					installRemoteModule_version=3.1.6
 				fi
 			fi
 			;;
@@ -3388,7 +3548,7 @@ installRemoteModule() {
 				fi
 			fi
 			if ! test -f /usr/local/lib/libxdiff.* && ! test -f /usr/lib/libxdiff.* && ! test -f /usr/lib/x86_64*/libxdiff.*; then
-				installRemoteModule_src="$(getPackageSource http://www.xmailserver.org/libxdiff-0.23.tar.gz)"
+				installRemoteModule_src="$(getPackageSource https://raw.githubusercontent.com/mlocati/docker-php-extension-installer/assets/resources/libxdiff-0.23.tar.gz)"
 				cd -- "$installRemoteModule_src"
 				./configure --disable-shared --disable-dependency-tracking --with-pic
 				make -j$(getProcessorCount)
@@ -3404,9 +3564,15 @@ installRemoteModule() {
 			fi
 			;;
 		xlswriter)
+			installRemoteModule_version="$(resolvePeclStabilityVersion "$installRemoteModule_module" "$installRemoteModule_version")"
 			if test -z "$installRemoteModule_version" || test $(compareVersions "$installRemoteModule_version" 1.2.7) -ge 0; then
 				# enable reader supports?
 				addConfigureOption enable-reader yes
+			fi
+			;;
+		xmlrpc)
+			if test -z "$installRemoteModule_version"; then
+				installRemoteModule_version=beta
 			fi
 			;;
 		yac)
@@ -3414,6 +3580,8 @@ installRemoteModule() {
 				if test $PHP_MAJMIN_VERSION -le 506; then
 					installRemoteModule_version=0.9.2
 				fi
+			else
+				installRemoteModule_version="$(resolvePeclStabilityVersion "$installRemoteModule_module" "$installRemoteModule_version")"
 			fi
 			if test -z "$installRemoteModule_version" || test $(compareVersions "$installRemoteModule_version" 2.2.0) -ge 0; then
 				# Enable igbinary serializer support
@@ -3450,6 +3618,8 @@ installRemoteModule() {
 				if test $PHP_MAJMIN_VERSION -le 506; then
 					installRemoteModule_version=1.2.5
 				fi
+			else
+				installRemoteModule_version="$(resolvePeclStabilityVersion "$installRemoteModule_module" "$installRemoteModule_version")"
 			fi
 			if test -z "$installRemoteModule_version" || test $(compareVersions "$installRemoteModule_version" 1.2.4) -ge 0; then
 				# Enable Msgpack Supports
@@ -3460,14 +3630,29 @@ installRemoteModule() {
 				fi
 			fi
 			;;
+		zmq)
+			if test -z "$installRemoteModule_version"; then
+				installRemoteModule_src="$(getPackageSource https://github.com/zeromq/php-zmq/tarball/master)"
+				cd "$installRemoteModule_src"
+				phpize
+				./configure
+				make -j$(getProcessorCount)
+				make install
+				cd - >/dev/null
+				installRemoteModule_manuallyInstalled=1
+			fi
+			;;
 		zookeeper)
 			if test -z "$installRemoteModule_version"; then
 				if test $PHP_MAJMIN_VERSION -le 506; then
 					installRemoteModule_version=0.5.0
-				else
+				elif test $PHP_MAJMIN_VERSION -le 700; then
 					installRemoteModule_version=1.0.0
+				else
+					installRemoteModule_version=alpha
 				fi
 			fi
+			installRemoteModule_version="$(resolvePeclStabilityVersion "$installRemoteModule_module" "$installRemoteModule_version")"
 			case "$DISTRO" in
 				alpine)
 					if ! test -f /usr/local/include/zookeeper/zookeeper.h; then
@@ -3501,6 +3686,13 @@ installRemoteModule() {
 					fi
 					;;
 			esac
+			;;
+		zstd)
+			if test -z "$installRemoteModule_version"; then
+				if test $PHP_MAJMIN_VERSION -le 506; then
+					installRemoteModule_version=0.11.0
+				fi
+			fi
 			;;
 	esac
 	if test $installRemoteModule_manuallyInstalled -eq 0; then
@@ -3547,14 +3739,13 @@ moduleMayUsePecl() {
 # Updates:
 #   PHP_MODULES_TO_INSTALL
 # Sets:
-#   USE_PICKLE
+#   USE_PICKLE 0: no, 1: yes (already downloaded), 2: yes (build it from source)
 configureInstaller() {
 	USE_PICKLE=0
-	for PHP_MODULE_TO_INSTALL in $PHP_MODULES_TO_INSTALL; do
-		if moduleMayUsePecl "$PHP_MODULE_TO_INSTALL"; then
-			if test $PHP_MAJMIN_VERSION -lt 800; then
-				pecl channel-update pecl.php.net || true
-				return
+	if ! which pecl >/dev/null; then
+		for PHP_MODULE_TO_INSTALL in $PHP_MODULES_TO_INSTALL; do
+			if ! moduleMayUsePecl "$PHP_MODULE_TO_INSTALL"; then
+				continue
 			fi
 			if false && anyStringInList '' "$PHP_MODULES_TO_INSTALL"; then
 				USE_PICKLE=2
@@ -3563,9 +3754,19 @@ configureInstaller() {
 				chmod +x /tmp/pickle
 				USE_PICKLE=1
 			fi
-			return
+			break
+		done
+	fi
+	if test $USE_PICKLE -eq 0; then
+		if test -z "$(pear config-get http_proxy)"; then
+			if test -n "${http_proxy:-}"; then
+				pear config-set http_proxy "$http_proxy" || true
+			elif test -n "${HTTP_PROXY:-}"; then
+				pear config-set http_proxy "$HTTP_PROXY" || true
+			fi
 		fi
-	done
+		pecl channel-update pecl.php.net || true
+	fi
 }
 
 buildPickle() {
@@ -3695,6 +3896,36 @@ removeStringFromList() {
 	printf '%s' "$removeStringFromList_result"
 }
 
+# Invoke apt-get update
+#
+# Set:
+# IPE_APTGET_INSTALLOPTIONS
+invokeAptGetUpdate() {
+	if test -n "${IPE_APTGETUPDATE_ALREADY:-}"; then
+		DEBIAN_FRONTEND=noninteractive apt-get update -q
+		return
+	fi
+	IPE_APTGET_INSTALLOPTIONS=''
+	if ! grep -q 'VERSION="8 (jessie)"' /etc/os-release; then
+		DEBIAN_FRONTEND=noninteractive apt-get update -q
+		return
+	fi
+	invokeAptGetUpdate_tmp="$(mktemp)"
+	DEBIAN_FRONTEND=noninteractive apt-get update -q 2>"$invokeAptGetUpdate_tmp"
+	if test -s "$invokeAptGetUpdate_tmp"; then
+		cat "$invokeAptGetUpdate_tmp" >&2
+		if grep -qE ' KEYEXPIRED [0-9]' "$invokeAptGetUpdate_tmp"; then
+			IPE_APTGET_INSTALLOPTIONS='-o APT::Get::AllowUnauthenticated=true'
+			echo '############' >&2
+			echo '# WARNING! #' >&2
+			echo '############' >&2
+			echo 'apt packages will be installed without checking authenticity!' >&2
+		fi
+	fi
+	rm "$invokeAptGetUpdate_tmp"
+	IPE_APTGETUPDATE_ALREADY=y
+}
+
 # Fix the Let's Encrypt CA certificates on old distros
 fixLetsEncrypt() {
 	printf '### FIXING LETS ENCRYPT CA CERTIFICATES ###\n'
@@ -3720,10 +3951,10 @@ fixLetsEncrypt() {
 				fi
 				if test $fixCACerts_mustUpdate -eq 1; then
 					printf -- '- refreshing the APT package list\n'
-					DEBIAN_FRONTEND=noninteractive apt-get update -qq
+					invokeAptGetUpdate
 				fi
 				printf -- '- installing newer ca-certificates package\n'
-				DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends ca-certificates
+				DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends $IPE_APTGET_INSTALLOPTIONS ca-certificates
 			fi
 			;;
 		*)
@@ -3766,7 +3997,7 @@ cleanup() {
 		case "$DISTRO" in
 			debian)
 				printf '### RESTORING PREVIOUSLY INSTALLED PACKAGES ###\n'
-				DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends --no-upgrade -qqy $PACKAGES_PREVIOUS
+				DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends --no-upgrade $IPE_APTGET_INSTALLOPTIONS $PACKAGES_PREVIOUS
 				;;
 		esac
 	fi

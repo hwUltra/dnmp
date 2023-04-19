@@ -114,7 +114,9 @@ services:
       MYSQL_SERVICE_PASSWORD: 123456
       MYSQL_SERVICE_DB_PARAM: characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useSSL=false
     ports:
-      - "8848:8848"
+      - 8848:8848
+      - 9848:9848
+      - 9849:9849
     restart: on-failure
     networks:
       - default
@@ -200,7 +202,7 @@ services:
     restart: always
     command: server /data
     ports:
-      - 9000:9000
+      - 9000:9000  
     volumes:
       - ./minio/data:/data
     environment:

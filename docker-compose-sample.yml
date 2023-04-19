@@ -111,9 +111,7 @@ services:
       TZ: "$TZ"
     networks:
       - default
-
-
-        
+    
   portainer:
     image: ${PORTAINER_VERSION}
     container_name: portainer

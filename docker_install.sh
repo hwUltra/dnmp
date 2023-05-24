@@ -112,7 +112,7 @@ do_install(){
 	sudo gpasswd -a ${USER} docker
 	mkdir -p $setup_path
 	cd $setup_path
-	git clone https://github.com/skywalkerwei/dnmp.git
+	git clone https://github.com/hwProMax/dnmp.git
   	cd dnmp
 	
 	# unzip ./services/php/extensions.zip

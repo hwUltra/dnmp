@@ -26,10 +26,9 @@ services:
       - ${NGINX_LOG_DIR}:/var/log/nginx/:cached
     environment:
       TZ: "$TZ"
-    restart: always
     networks:
       - default
-
+      
   mysql:
     image: mysql/mysql-server:${MYSQL_VERSION}
     container_name: mysql
@@ -61,27 +60,11 @@ services:
     networks:
       - default
 
-  golang:                                # 自定义容器名称
-    build:
-      context: ./services/golang                  # 指定构建使用的 Dockerfile 文件
-    container_name: golang
-    environment:                         # 设置环境变量
-      - TZ=${TZ}
-    volumes:                             # 设置挂载目录
-      - ${SOURCE_DIR}:/usr/src/code     # 引用 .env 配置中 SOURCE_DIR 变量，将宿主机上代码存放的目录挂载到容器中 /usr/src/code 目录
-    ports:                               # 设置端口映射
-      - "6100:6100"
-    stdin_open: true                     # 打开标准输入，可以接受外部输入
-    tty: true
-    networks:
-      - default
-    restart: always                      # 指定容器退出后的重启策略为始终重启
-
-
   etcd:                                  # 自定义容器名称
     build:
       context: ./services/etcd                    # 指定构建使用的 Dockerfile 文件
     container_name: etcd
+    restart: always
     environment:
       - TZ=${TZ}
       - ALLOW_NONE_AUTHENTICATION=yes
@@ -89,90 +72,7 @@ services:
       - "${ETCD_PORT}:2379"
     networks:
       - default
-    restart: always
-
-
-  prometheus:
-    build:
-      context: ./services/prometheus
-    container_name: prometheus
-    environment:
-      - TZ=${TZ}
-    volumes:
-      - ./services/prometheus/prometheus.yml:/opt/bitnami/prometheus/conf/prometheus.yml  # 将 prometheus 配置文件挂载到容器里
-    ports:
-      - "${PROMETHEUS_PORT}:9090"                     # 设置容器9090端口映射指定宿主机端口，用于宿主机访问可视化web
-    networks:
-      - default
-    restart: always
-
-
-  grafana:
-    build:
-      context: ./services/grafana
-    container_name: grafana
-    environment:
-      - TZ=${TZ}
-    ports:
-      - "${GRAFANA_PORT}:3000"                        # 设置容器3000端口映射指定宿主机端口，用于宿主机访问可视化web
-    networks:
-      - default
-    restart: always
-
-  jaeger:
-    build:
-      context: ./services/jaeger
-    container_name: jaeger
-    environment:
-      - TZ=${TZ}
-    ports:
-      - "${JAEGER_PORT}:16686"                        # 设置容器16686端口映射指定宿主机端口，用于宿主机访问可视化web
-    networks:
-      - default
-    restart: always
-
-  dtm:
-    build:
-      context: ./services/dtm
-    container_name: dtm
-    environment:
-      - TZ=${TZ}
-    entrypoint:
-      - "/app/dtm/dtm"
-      - "-c=/app/dtm/configs/config.yaml"
-    volumes:
-      - ./services/dtm/config.yml:/app/dtm/configs/config.yaml # 将 dtm 配置文件挂载到容器里
-    ports:
-      - "${DTM_HTTP_PORT}:36789"
-      - "${DTM_GRPC_PORT}:36790"
-    networks:
-      - default
-    restart: always
-
-
-  beanstalkd:
-    image: schickling/beanstalkd
-    container_name: beanstalkd
-    environment:
-      - TZ=${TZ}
-    ports:
-      - "${BEANSTALKD_PORT}:11300"                     # 设置容器16686端口映射指定宿主机端口，用于宿主机访问可视化web
-    networks:
-      - default
-    restart: always          
-
-  portainer:
-    image: ${PORTAINER_VERSION}
-    container_name: portainer
-    ports:
-      - "${PORTAINER_HOST_PORT}:9000"
-    restart: always
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:cached
-      - ${PORTAINER_DATA_DIR}:/data:cached
-    networks:
-      - default 
-  
+    
   minio:
     image: minio/minio:RELEASE.2021-06-17T00-10-46Z
     container_name: minio
@@ -185,3 +85,70 @@ services:
     environment:
       - MINIO_ROOT_USER=admin
       - MINIO_ROOT_PASSWORD=admin123456
+
+    
+  dtm:
+    build:
+      context: ./services/dtm
+    container_name: dtm
+    restart: always
+    environment:
+      - TZ=${TZ}
+    entrypoint:
+      - "/app/dtm/dtm"
+      - "-c=/app/dtm/configs/config.yaml"
+    volumes:
+      - ./services/dtm/config.yml:/app/dtm/configs/config.yaml # 将 dtm 配置文件挂载到容器里
+    ports:
+      - "${DTM_HTTP_PORT}:36789"
+      - "${DTM_GRPC_PORT}:36790"
+    networks:
+      - default
+
+  prometheus:
+    build:
+      context: ./services/prometheus
+    container_name: prometheus
+    restart: always
+    environment:
+      - TZ=${TZ}
+    volumes:
+      - ./services/prometheus/prometheus.yml:/opt/bitnami/prometheus/conf/prometheus.yml  # 将 prometheus 配置文件挂载到容器里
+    ports:
+      - "${PROMETHEUS_PORT}:9090"                     # 设置容器9090端口映射指定宿主机端口，用于宿主机访问可视化web
+    networks:
+      - default
+
+  beanstalkd:
+    image: schickling/beanstalkd
+    container_name: beanstalkd
+    environment:
+      - TZ=${TZ}
+    ports:
+      - "${BEANSTALKD_PORT}:11300"                     # 设置容器16686端口映射指定宿主机端口，用于宿主机访问可视化web
+    networks:
+      - default
+
+  jaeger:
+    build:
+      context: ./services/jaeger
+    container_name: jaeger
+    restart: always
+    environment:
+      - TZ=${TZ}
+    ports:
+      - "${JAEGER_PORT}:16686"                        # 设置容器16686端口映射指定宿主机端口，用于宿主机访问可视化web
+    networks:
+      - default
+
+
+  grafana:
+    build:
+      context: ./services/grafana
+    container_name: grafana
+    environment:
+      - TZ=${TZ}
+    ports:
+      - "${GRAFANA_PORT}:3000"                        # 设置容器3000端口映射指定宿主机端口，用于宿主机访问可视化web
+    networks:
+      - default

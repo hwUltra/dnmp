@@ -37,12 +37,12 @@ Install_Check(){
     	fi
     fi
 
-	D_Info=('简化版' '基础版本' '完全版','Golang')
+	D_Info=('简化版' 'PHP版' 'Golang版','Java版')
     if [ -z ${DSelect} ]; then
         DSelect="1"
         echo "You have 3 options for your dnmp install."
-        echo "1: Install ${D_Info[0]} (Default)"
-        echo "2: Install ${D_Info[1]} (基础+jenkins)"
+        echo "1: Install ${D_Info[0]}"
+        echo "2: Install ${D_Info[1]}"
         echo "3: Install ${D_Info[2]}"
 		echo "4: Install ${D_Info[3]}"
         read -p "Enter your choice (1, 2, 3, 4): " DSelect
@@ -123,13 +123,13 @@ do_install(){
         cp -f  docker-compose-sample.yml  docker-compose.yml
 		cp env.sample .env 
 	elif [ "${DSelect}" = "2" ]; then
-        cp -f  docker-compose-base.yml  docker-compose.yml
+        cp -f  docker-compose-php.yml  docker-compose.yml
 		cp env.jenkins .env 
 	elif [ "${DSelect}" = "3" ]; then
-        cp -f  docker-compose-full.yml  docker-compose.yml 
+        cp -f  docker-compose-golang.yml  docker-compose.yml 
 		cp env.jenkins .env 
 	elif [ "${DSelect}" = "4" ]; then
-        cp -f  docker-compose-golang.yml  docker-compose.yml 
+        cp -f  docker-compose-java.yml  docker-compose.yml 
 		cp env.jenkins .env 
     fi
 

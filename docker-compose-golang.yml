@@ -60,15 +60,15 @@ services:
     networks:
       - default
 
-  etcd:                                  # 自定义容器名称
+  etcd:                                
     build:
-      context: ./services/etcd                    # 指定构建使用的 Dockerfile 文件
+      context: ./services/etcd                    
     container_name: etcd
     restart: always
     environment:
       - TZ=${TZ}
       - ALLOW_NONE_AUTHENTICATION=yes
-    ports:                               # 设置端口映射
+    ports:                              
       - "${ETCD_PORT}:2379"
     networks:
       - default
@@ -88,7 +88,6 @@ services:
       - MINIO_ROOT_PASSWORD=admin123456
     networks:
       - default
-
     
   dtm:
     build:
@@ -143,7 +142,6 @@ services:
       - "${JAEGER_PORT}:16686"                        # 设置容器16686端口映射指定宿主机端口，用于宿主机访问可视化web
     networks:
       - default
-
 
   grafana:
     build:

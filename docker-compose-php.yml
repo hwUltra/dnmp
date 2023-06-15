@@ -29,7 +29,6 @@ services:
     restart: always
     networks:
       - default
-
  
   php:
     build:
@@ -59,7 +58,6 @@ services:
         supervisord -n -c /etc/supervisor/supervisord.conf
     networks:
       - default
-
 
   mysql:
     image: mysql/mysql-server:${MYSQL_VERSION}

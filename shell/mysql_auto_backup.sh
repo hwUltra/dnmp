@@ -3,7 +3,7 @@
 # $Name:         mysql_auto_backup.sh
 # $Version:      1.0
 # $Function:     Backup MySQL Databases Script
-# $Author:       skywalkerwie
+# $Author:       skywalkerwei
 # $organization: https://github.com/skywalkerwei
 # $Description:  定期备份MySQL数据库
 # $Crontab:      10 3 * * *  bash ./backup/mysql_auto_backup.sh >/dev/null 2>&1
@@ -33,6 +33,6 @@ BACKUP_NAME=${DB_NAME}".sql"
 mkdir -p $BACKUP_PATH
 
 # run docker
-RES=$(docker exec dnmp-mysql mysqldump  --defaults-extra-file=/etc/mysql/conf.d/mysql.cnf  $DB_NAME > $BACKUP_NAME)
+RES=$(docker exec mysql mysqldump  --defaults-extra-file=/etc/mysql/conf.d/mysql.cnf  $DB_NAME > $BACKUP_NAME)
 echo $CURRENT_TIME-"备份结果："$? 
 mv $BACKUP_NAME  $BACKUP_PATH

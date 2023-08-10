@@ -121,16 +121,16 @@ do_install(){
 
 	if [ "${DSelect}" = "1" ]; then
         cp -f  docker-compose-sample.yml  docker-compose.yml
-		cp env.sample .env 
+		cp sample.env .env 
 	elif [ "${DSelect}" = "2" ]; then
         cp -f  docker-compose-php.yml  docker-compose.yml
-		cp env.jenkins .env 
+		cp jenkins.env .env 
 	elif [ "${DSelect}" = "3" ]; then
         cp -f  docker-compose-golang.yml  docker-compose.yml 
-		cp env.jenkins .env 
+		cp jenkins.env .env 
 	elif [ "${DSelect}" = "4" ]; then
         cp -f  docker-compose-java.yml  docker-compose.yml 
-		cp env.jenkins .env 
+		cp jenkins.env .env 
     fi
 
 	docker-compose up

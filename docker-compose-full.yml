@@ -235,6 +235,21 @@ services:
     ports:
       - "${KIBANA_HOST}:5601"
 
+  etcd:                                 
+    build:
+      context: ./services/etcd                  
+    container_name: etcd
+    restart: always
+    environment:
+      - TZ=${TZ}
+      - ALLOW_NONE_AUTHENTICATION=yes
+      - ETCD_LISTEN_CLIENT_URLS=${ETCD_LISTEN_CLIENT_URLS}         
+      - ETCD_ADVERTISE_CLIENT_URLS=${ETCD_ADVERTISE_CLIENT_URLS}       
+    ports:                             
+      - "${ETCD_PORT}:2379"
+    networks:
+      - default     
+
   logstash:
     image: logstash:${LOGSTASH_VERSION}
     container_name: logstash

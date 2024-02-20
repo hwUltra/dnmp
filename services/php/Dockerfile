@@ -4,12 +4,13 @@ FROM ${PHP_VERSION}
 ARG TZ
 ARG PHP_EXTENSIONS
 ARG CONTAINER_PACKAGE_URL
+ARG COMPOSER_URL
 
-
-RUN if [ $CONTAINER_PACKAGE_URL ] ; then sed -i "s/dl-cdn.alpinelinux.org/${CONTAINER_PACKAGE_URL}/g" /etc/apk/repositories ; fi
+RUN if [ "${CONTAINER_PACKAGE_URL}" != "" ] ; then sed -i "s/dl-cdn.alpinelinux.org/${CONTAINER_PACKAGE_URL}/g" /etc/apk/repositories ; fi
 
 COPY ./extensions /tmp/extensions
 WORKDIR /tmp/extensions
+
 RUN chmod +x install.sh \
     && sh install.sh \
     && rm -rf /tmp/extensions
@@ -29,7 +30,7 @@ ENV LD_PRELOAD /usr/lib/preloadable_libiconv.so php
 
 
 # Install composer and change it's cache home
-RUN curl -o /usr/bin/composer https://mirrors.aliyun.com/composer/composer.phar \
+RUN curl -o /usr/bin/composer https://${COMPOSER_URL}/composer/composer.phar \
     && chmod +x /usr/bin/composer
 ENV COMPOSER_HOME=/tmp/composer
 
@@ -41,5 +42,6 @@ RUN apk --no-cache add shadow && usermod -u 1000 www-data && groupmod -g 1000 ww
 # supervisor
 RUN apk add supervisor \
 	&& rm -rf /var/cache/apk/*
+
 
 WORKDIR /www

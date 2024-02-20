@@ -52,7 +52,7 @@ isPhpVersionGreaterOrEqual()
 # Install extension from package file(.tgz),
 # For example:
 #
-# installExtensionFromTgz redis-5.2.2
+# installExtensionFromTgz redis-6.0.2
 #
 # Param 1: Package name with version
 # Param 2: enable options
@@ -346,10 +346,12 @@ fi
 
 if [[ -z "${EXTENSIONS##*,imagick,*}" ]]; then
     echo "---------- Install imagick ----------"
-	apk add --no-cache file-dev
-	apk add --no-cache imagemagick-dev
-    printf "\n" | pecl install imagick
-    docker-php-ext-enable imagick
+    apk add --no-cache file-dev
+    apk add --no-cache imagemagick imagemagick-dev
+#    cd imagick-3.7.0 && phpize && ./configure
+#    make 
+#    make install 
+    installExtensionFromTgz imagick-3.7.0
 fi
 
 if [[ -z "${EXTENSIONS##*,rar,*}" ]]; then
@@ -530,7 +532,7 @@ fi
 
 if [[ -z "${EXTENSIONS##*,redis,*}" ]]; then
     echo "---------- Install redis ----------"
-    installExtensionFromTgz redis-5.3.7
+    installExtensionFromTgz redis-6.0.2
 fi
 
 if [[ -z "${EXTENSIONS##*,apcu,*}" ]]; then
@@ -693,6 +695,7 @@ if [[ -z "${EXTENSIONS##*,sdebug,*}" ]]; then
 fi
 
 if [ "${PHP_EXTENSIONS}" != "" ]; then
-    apk del .build-deps \
-    && docker-php-source delete
+#    PHP-Imagick 扩展中有所需的其他依赖项,不进行删除.build-deps 
+#    apk del .build-deps \
+     docker-php-source delete
 fi

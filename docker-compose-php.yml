@@ -1,4 +1,3 @@
-version: "3"
 # 网络配置
 networks:
   default:

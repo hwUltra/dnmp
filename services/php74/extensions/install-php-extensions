@@ -662,9 +662,11 @@ expandASpellDictionaries() {
 #   PACKAGES_PERSISTENT_PRE the list of packages required at runtume that are already installed
 #   PACKAGES_VOLATILE the list of packages required at compile time that must be installed
 #   PACKAGES_PREVIOUS the list of packages (with their version) that are installed right now (calculated only on Debian and only if PACKAGES_PERSISTENT_NEW or PACKAGES_VOLATILE are not empty)
+#   COMPILE_LIBS
 buildRequiredPackageLists() {
 	buildRequiredPackageLists_persistent=''
 	buildRequiredPackageLists_volatile=''
+	COMPILE_LIBS=''
 	case "$DISTRO" in
 		alpine)
 			apk update
@@ -844,6 +846,18 @@ buildRequiredPackageLists() {
 							case "${IPE_GD_WITHOUTAVIF:-}" in
 								1 | y* | Y*) ;;
 								*)
+									if ! isLibaomInstalled; then
+										COMPILE_LIBS="$COMPILE_LIBS libaom"
+									fi
+									if ! isLibdav1dInstalled; then
+										COMPILE_LIBS="$COMPILE_LIBS libdav1d"
+									fi
+									if ! isLibyuvInstalled; then
+										COMPILE_LIBS="$COMPILE_LIBS libyuv"
+									fi
+									if ! isLibavifInstalled; then
+										COMPILE_LIBS="$COMPILE_LIBS libavif"
+									fi
 									buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libstdc++"
 									buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile cmake nasm meson"
 									;;
@@ -869,6 +883,18 @@ buildRequiredPackageLists() {
 							case "${IPE_GD_WITHOUTAVIF:-}" in
 								1 | y* | Y*) ;;
 								*)
+									if ! isLibaomInstalled; then
+										COMPILE_LIBS="$COMPILE_LIBS libaom"
+									fi
+									if ! isLibdav1dInstalled; then
+										COMPILE_LIBS="$COMPILE_LIBS libdav1d"
+									fi
+									if ! isLibyuvInstalled; then
+										COMPILE_LIBS="$COMPILE_LIBS libyuv"
+									fi
+									if ! isLibavifInstalled; then
+										COMPILE_LIBS="$COMPILE_LIBS libavif"
+									fi
 									buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile cmake nasm meson"
 									;;
 							esac
@@ -952,7 +978,7 @@ buildRequiredPackageLists() {
 					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile ^libidn1[0-9+]-dev$"
 				else
 					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent ^libicu[0-9]+$ ^libidn2-[0-9+]$"
-					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libicu-dev ^libidn2-[0-9+]-dev$"
+					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libicu-dev ^libidn2-[0-9+]-dev$ ^libgcrypt[0-9]+-dev$"
 				fi
 				;;
 			imagick@alpine)
@@ -984,6 +1010,9 @@ buildRequiredPackageLists() {
 				;;
 			interbase@alpine)
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile icu-dev ncurses-dev"
+				if ! isFirebirdInstalled; then
+					COMPILE_LIBS="$COMPILE_LIBS firebird"
+				fi
 				;;
 			interbase@debian)
 				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libfbclient2"
@@ -1159,6 +1188,20 @@ buildRequiredPackageLists() {
 				;;
 			pdo_firebird@alpine)
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile icu-dev ncurses-dev"
+				if ! isFirebirdInstalled; then
+					COMPILE_LIBS="$COMPILE_LIBS firebird"
+					if test $PHP_MAJMIN_VERSION -ge 804; then
+						buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libstdc++"
+						buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile zlib-dev"
+						if ! isLibTommathInstalled; then
+							COMPILE_LIBS="$COMPILE_LIBS libtommath"
+							buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile cmake"
+						fi
+						if ! isLibTomcryptInstalled; then
+							COMPILE_LIBS="$COMPILE_LIBS libtomcrypt"
+						fi
+					fi
+				fi
 				;;
 			pdo_firebird@debian)
 				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libfbclient2"
@@ -1174,6 +1217,20 @@ buildRequiredPackageLists() {
 				;;
 			php_trie@alpine)
 				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libstdc++"
+				;;
+			phpy@alpine)
+				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent python3"
+				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile python3-dev"
+				;;
+			phpy@debian)
+				if test $DISTRO_VERSION_NUMBER -ge 12; then
+					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libpython3.11"
+				elif test $DISTRO_VERSION_NUMBER -ge 11; then
+					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libpython3.9"
+				else
+					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libpython3.7"
+				fi
+				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile python3-dev"
 				;;
 			pkcs11@alpine)
 				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent softhsm"
@@ -1354,6 +1411,9 @@ buildRequiredPackageLists() {
 				if test $PHP_MAJMIN_VERSION -ge 702; then
 					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent c-ares"
 					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile c-ares-dev"
+					if test $PHP_MAJMIN_VERSION -ge 801; then
+						buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile sqlite-dev"
+					fi
 				fi
 				;;
 			swoole@debian)
@@ -1362,9 +1422,13 @@ buildRequiredPackageLists() {
 				if test $PHP_MAJMIN_VERSION -ge 702; then
 					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libc-ares2"
 					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libc-ares-dev"
-				fi
-				if test $PHP_MAJMIN_VERSION -ge 800; then
-					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile zlib1g-dev"
+					if test $PHP_MAJMIN_VERSION -ge 800; then
+						buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libbrotli1"
+						buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile zlib1g-dev libbrotli-dev"
+						if test $PHP_MAJMIN_VERSION -ge 801; then
+							buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libsqlite3-dev"
+						fi
+					fi
 				fi
 				;;
 			sybase_ct@alpine)
@@ -1489,6 +1553,12 @@ buildRequiredPackageLists() {
 				;;
 			xmlrpc@debian)
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libxml2-dev"
+				;;
+			xpass@alpine)
+				if ! isLibXCryptInstalled; then
+					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile linux-headers"
+					COMPILE_LIBS="$COMPILE_LIBS libxcrypt"
+				fi
 				;;
 			xsl@alpine)
 				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libxslt"
@@ -2293,6 +2363,91 @@ installLibThai() {
 	cd - >/dev/null
 }
 
+isLibTommathInstalled() {
+	if test -f /usr/local/lib/libtommath.a && test -f /usr/local/include/tommath.h; then
+		return 0
+	fi
+	return 1
+}
+
+installLibTommath() {
+	printf 'Installing libtommath\n'
+	installLibTommath_src="$(getPackageSource https://github.com/libtom/libtommath/releases/download/v1.3.0/ltm-1.3.0.tar.xz)"
+	mkdir -p "$installLibTommath_src/build"
+	cd -- "$installLibTommath_src/build"
+	CFLAGS='-fPIC' cmake -DCMAKE_BUILD_TYPE=Release ..
+	make -j$(getProcessorCount)
+	make install
+	cd - >/dev/null
+}
+
+isLibTomcryptInstalled() {
+	if test -f /usr/local/lib/libtomcrypt.a && test -f /usr/local/include/tomcrypt.h; then
+		return 0
+	fi
+	return 1
+}
+
+installLibTomcrypt() {
+	printf 'Installing libtomcrypt\n'
+	installLibTomcrypt_src="$(getPackageSource https://github.com/libtom/libtomcrypt/releases/download/v1.18.2/crypt-1.18.2.tar.xz)"
+	cd -- "$installLibTomcrypt_src"
+	CFLAGS='-fPIC' make -j$(getProcessorCount)
+	make install
+}
+
+isFirebirdInstalled() {
+	if test -f /usr/lib/libfbclient.so && test -f /usr/include/ibase.h; then
+		return 0
+	fi
+	if test -d /tmp/src/firebird; then
+		return 0
+	fi
+	return 1
+}
+
+installFirebird() {
+	printf 'Installing firebird\n'
+	if test $PHP_MAJMIN_VERSION -ge 804; then
+		installFirebird_src="$(getPackageSource https://github.com/FirebirdSQL/firebird/releases/download/v5.0.1/Firebird-5.0.1.1469-0-source.tar.xz)"
+		cd -- "$installFirebird_src"
+		./configure --enable-client-only
+		make -j$(getProcessorCount)
+		cp -Rd gen/Release/firebird/include/* /usr/include
+		cp -Rd gen/Release/firebird/lib/* /usr/lib
+		cd - >/dev/null
+	else
+		mv "$(getPackageSource https://github.com/FirebirdSQL/firebird/releases/download/R2_5_9/Firebird-2.5.9.27139-0.tar.bz2)" /tmp/src/firebird
+		cd /tmp/src/firebird
+		# Patch rwlock.h (this has been fixed in later release of firebird 3.x)
+		sed -i '194s/.*/#if 0/' src/common/classes/rwlock.h
+		./configure --with-system-icu
+		# -j option can't be used: make targets must be compiled sequentially
+		make -s btyacc_binary gpre_boot libfbstatic libfbclient
+		cp gen/firebird/lib/libfbclient.so /usr/lib/
+		ln -s /usr/lib/libfbclient.so /usr/lib/libfbclient.so.2
+		cd - >/dev/null
+	fi
+}
+
+isLibXCryptInstalled() {
+	if ! test -f /usr/local/lib/libcrypt.so && ! test -f /usr/lib/libcrypt.so && ! test -f /usr/lib/x86_64*/libcrypt.so; then
+		return 1
+	fi
+	return 0
+}
+
+installLibXCrypt() {
+	printf 'Installing libxcrypt\n'
+	installLibXCrypt_version=4.4.36
+	installLibXCrypt_src="$(getPackageSource "https://github.com/besser82/libxcrypt/releases/download/v$installLibXCrypt_version/libxcrypt-$installLibXCrypt_version.tar.xz")"
+	cd -- "$installLibXCrypt_src"
+	./configure --prefix /usr
+	make -j$(getProcessorCount)
+	make install
+	cd - >/dev/null
+}
+
 # Install Composer
 installComposer() {
 	installComposer_version="$(getWantedPHPModuleVersion @composer)"
@@ -2446,6 +2601,12 @@ installNewRelic() {
 			NR_INSTALL_USE_CP_NOT_LN=1 NR_INSTALL_SILENT=1 ./newrelic-install install_daemon
 			;;
 	esac
+	case "${IPE_NEWRELIC_KEEPLOG:-}" in
+		1 | y* | Y*) ;;
+		*)
+			rm -f /tmp/nrinstall-*.tar
+			;;
+	esac
 	cd - >/dev/null
 	cat <<EOT
 NewRelic has been installed from $installNewRelic_url
@@ -2457,6 +2618,34 @@ You may need to:
   (if you didn't set the NR_INSTALL_KEY environment variable)
 
 EOT
+}
+
+# Compile the libraries specified in the COMPILE_LIBS variable
+compileLibs() {
+	if stringInList libaom "$COMPILE_LIBS"; then
+		installLibaom
+	fi
+	if stringInList libdav1d "$COMPILE_LIBS"; then
+		installLibdav1d
+	fi
+	if stringInList libyuv "$COMPILE_LIBS"; then
+		installLibyuv
+	fi
+	if stringInList libavif "$COMPILE_LIBS"; then
+		installLibavif
+	fi
+	if stringInList libtommath "$COMPILE_LIBS"; then
+		installLibTommath
+	fi
+	if stringInList libtomcrypt "$COMPILE_LIBS"; then
+		installLibTomcrypt
+	fi
+	if stringInList firebird "$COMPILE_LIBS"; then
+		installFirebird
+	fi
+	if stringInList libxcrypt "$COMPILE_LIBS"; then
+		installLibXCrypt
+	fi
 }
 
 # Install a bundled PHP module given its handle
@@ -2525,7 +2714,11 @@ EOF
 			fi
 			;;
 		ftp)
-			docker-php-ext-configure ftp --with-openssl-dir=/usr
+			if test $PHP_MAJMIN_VERSION -ge 804; then
+				docker-php-ext-configure ftp --with-ftp-ssl=/usr
+			else
+				docker-php-ext-configure ftp --with-openssl-dir=/usr
+			fi
 			;;
 		gd)
 			if test $PHP_MAJMIN_VERSION -le 506; then
@@ -2551,23 +2744,6 @@ EOF
 						;;
 				esac
 				if test $installBundledModule_tmp -eq 0; then
-					case "${IPE_GD_WITHOUTAVIF:-}" in
-						1 | y* | Y*) ;;
-						*)
-							if ! isLibaomInstalled; then
-								installLibaom
-							fi
-							if ! isLibdav1dInstalled; then
-								installLibdav1d
-							fi
-							if ! isLibyuvInstalled; then
-								installLibyuv
-							fi
-							if ! isLibavifInstalled; then
-								installLibavif
-							fi
-							;;
-					esac
 					if isLibaomInstalled && isLibdav1dInstalled && isLibyuvInstalled && isLibavifInstalled; then
 						installBundledModule_tmp=1
 					fi
@@ -2603,19 +2779,9 @@ EOF
 		interbase | pdo_firebird)
 			case "$DISTRO" in
 				alpine)
-					if ! test -d /tmp/src/firebird; then
-						mv "$(getPackageSource https://github.com/FirebirdSQL/firebird/releases/download/R2_5_9/Firebird-2.5.9.27139-0.tar.bz2)" /tmp/src/firebird
-						cd /tmp/src/firebird
-						# Patch rwlock.h (this has been fixed in later release of firebird 3.x)
-						sed -i '194s/.*/#if 0/' src/common/classes/rwlock.h
-						./configure --with-system-icu
-						# -j option can't be used: make targets must be compiled sequentially
-						make -s btyacc_binary gpre_boot libfbstatic libfbclient
-						cp gen/firebird/lib/libfbclient.so /usr/lib/
-						ln -s /usr/lib/libfbclient.so /usr/lib/libfbclient.so.2
-						cd - >/dev/null
+					if test $PHP_MAJMIN_VERSION -lt 804; then
+						CFLAGS='-I/tmp/src/firebird/src/jrd -I/tmp/src/firebird/src/include -I/tmp/src/firebird/src/include/gen' docker-php-ext-configure $1
 					fi
-					CFLAGS='-I/tmp/src/firebird/src/jrd -I/tmp/src/firebird/src/include -I/tmp/src/firebird/src/include/gen' docker-php-ext-configure $1
 					;;
 			esac
 			;;
@@ -2852,7 +3018,7 @@ installRemoteModule() {
 				if test $(compareVersions "$(cmake --version | head -n1 | sed -E 's/^.* //')" '3.7') -lt 0; then
 					installRemoteModule_tmp=0.29.0
 				else
-					installRemoteModule_tmp=0.31.0
+					installRemoteModule_tmp=0.31.1
 				fi
 				cd "$(getPackageSource https://github.com/commonmark/cmark/archive/$installRemoteModule_tmp.tar.gz)"
 				make -s -j$(getProcessorCount) cmake_build
@@ -2881,6 +3047,16 @@ installRemoteModule() {
 			if test -z "$installRemoteModule_version"; then
 				if test $PHP_MAJMIN_VERSION -lt 700; then
 					installRemoteModule_version=0.75.0
+				fi
+				if test -z "$installRemoteModule_version"; then
+					case "$DISTRO" in
+						alpine)
+							if test $DISTRO_MAJMIN_VERSION -le 312; then
+								# cc is not supported due to a memcmp related bug
+								installRemoteModule_version=1.1.0
+							fi
+							;;
+					esac
 				fi
 			else
 				installRemoteModule_version="$(resolvePeclStabilityVersion "$installRemoteModule_module" "$installRemoteModule_version")"
@@ -2917,6 +3093,13 @@ installRemoteModule() {
 		ecma_intl)
 			if test -z "$installRemoteModule_version"; then
 				installRemoteModule_version=alpha
+			fi
+			;;
+		ev)
+			if test -z "$installRemoteModule_version"; then
+				if test $PHP_MAJMIN_VERSION -lt 800; then
+					installRemoteModule_version=1.1.5
+				fi
 			fi
 			;;
 		event)
@@ -3108,7 +3291,7 @@ installRemoteModule() {
 			if ! test -f /usr/local/lib/libionc.so || ! test -f /usr/local/include/ionc/ion.h; then
 				echo 'Installing ion-c... '
 				installRemoteModule_src="$(mktemp -p /tmp/src -d)"
-				git clone -q -c advice.detachedHead=false --depth 1 --branch v1.1.2 https://github.com/amzn/ion-c.git "$installRemoteModule_src/ion"
+				git clone -q -c advice.detachedHead=false --depth 1 --branch v1.1.3 https://github.com/amzn/ion-c.git "$installRemoteModule_src/ion"
 				(
 					cd "$installRemoteModule_src/ion"
 					git submodule init -q
@@ -3691,10 +3874,10 @@ installRemoteModule() {
 		snuffleupagus)
 			if test -z "$installRemoteModule_path"; then
 				if test -z "$installRemoteModule_version"; then
-					if test $PHP_MAJMIN_VERSION -le 704; then
+					if test $PHP_MAJMIN_VERSION -le 800; then
 						installRemoteModule_version=0.9.0
 					else
-						installRemoteModule_version=0.10.0
+						installRemoteModule_version=0.11.0
 					fi
 				fi
 				installRemoteModule_src="$(getPackageSource https://codeload.github.com/jvoisin/snuffleupagus/tar.gz/v$installRemoteModule_version)"
@@ -3738,7 +3921,7 @@ installRemoteModule() {
 		spx)
 			if test -z "$installRemoteModule_path"; then
 				if test -z "$installRemoteModule_version"; then
-					installRemoteModule_version=v0.4.15
+					installRemoteModule_version=v0.4.16
 				fi
 				if test "${installRemoteModule_version%.*}" = "$installRemoteModule_version"; then
 					installRemoteModule_displayVersion="$installRemoteModule_version"
@@ -3811,6 +3994,21 @@ installRemoteModule() {
 				elif test $PHP_BITS -eq 32; then
 					# See https://github.com/swoole/swoole-src/issues/5198#issuecomment-1820162178
 					installRemoteModule_version="$(resolvePHPModuleVersion "$installRemoteModule_module" '^5.0')"
+				else
+					case "$DISTRO" in
+						alpine)
+							if test $DISTRO_MAJMIN_VERSION -le 312; then
+								installRemoteModule_version=5.1.2
+							fi
+							;;
+					esac
+				fi
+				if test -z "$installRemoteModule_version"; then
+					if test $PHP_MAJMIN_VERSION -le 800; then
+						installRemoteModule_version=5.1.3
+					else
+						installRemoteModule_version="$(resolvePeclStabilityVersion "$installRemoteModule_module" stable)"
+					fi
 				fi
 			else
 				installRemoteModule_version="$(resolvePeclStabilityVersion "$installRemoteModule_module" "$installRemoteModule_version")"
@@ -3823,19 +4021,85 @@ installRemoteModule() {
 			installRemoteModule_openssl=yes
 			case "$DISTRO_VERSION" in
 				alpine@3.7 | alpine@3.8)
-					if test -n "$installRemoteModule_version" && test $(compareVersions "$installRemoteModule_version" 4.6.0) -lt 0; then
+					if test $(compareVersions "$installRemoteModule_version" 4.6.0) -lt 0; then
 						# see https://github.com/swoole/swoole-src/issues/3934
 						installRemoteModule_openssl=no
 					fi
 					;;
 			esac
-			if test $PHP_MAJMIN_VERSION -eq 803; then
-				# see https://github.com/swoole/docker-swoole/issues/45
+			if test $PHP_MAJMIN_VERSION -ge 800; then
+				# see https://github.com/swoole/swoole-src/issues/5365
 				installRemoteModule_curl=no
 			else
 				installRemoteModule_curl=yes
 			fi
-			if test -z "$installRemoteModule_version" || test $(compareVersions "$installRemoteModule_version" 5.0.1) -ge 0; then
+			if test $PHP_THREADSAFE -eq 1; then
+				installRemoteModule_zts=yes
+			else
+				installRemoteModule_zts=no
+			fi
+			installRemoteModule_sqlite=yes
+			case "$DISTRO" in
+				alpine)
+					if test $DISTRO_MAJMIN_VERSION -lt 317; then
+						# we need sqlite3 >= 3.7.7
+						installRemoteModule_sqlite=no
+					fi
+					;;
+				debian)
+					if test $DISTRO_MAJMIN_VERSION -lt 1200; then
+						# we need sqlite3 >= 3.7.7
+						installRemoteModule_sqlite=no
+					fi
+					;;
+			esac
+			if test $(compareVersions "$installRemoteModule_version" 6.0.0) -ge 0; then
+				# enable sockets supports?
+				addConfigureOption enable-sockets $installRemoteModule_sockets
+				# enable openssl support?
+				addConfigureOption enable-openssl $installRemoteModule_openssl
+				# enable mysqlnd support?
+				addConfigureOption enable-mysqlnd yes
+				# enable curl support?
+				addConfigureOption enable-swoole-curl $installRemoteModule_curl
+				# enable cares support?
+				addConfigureOption enable-cares yes
+				# enable brotli support?
+				addConfigureOption enable-brotli yes
+				# enable PostgreSQL database support?
+				addConfigureOption enable-swoole-pgsql yes
+				# enable ODBC database support?
+				addConfigureOption with-swoole-odbc no
+				# enable Oracle database support?
+				addConfigureOption with-swoole-oracle no
+				# enable Sqlite database support?
+				addConfigureOption enable-swoole-sqlite $installRemoteModule_sqlite
+				# enable swoole thread support (need php zts support)?
+				addConfigureOption enable-swoole-thread $installRemoteModule_zts
+				# enable iouring for file async support?
+				addConfigureOption enable-iouring yes
+			elif test $(compareVersions "$installRemoteModule_version" 5.1.0) -ge 0; then
+				# enable sockets supports?
+				addConfigureOption enable-sockets $installRemoteModule_sockets
+				# enable openssl support?
+				addConfigureOption enable-openssl $installRemoteModule_openssl
+				# enable mysqlnd support?
+				addConfigureOption enable-mysqlnd yes
+				# enable curl support?
+				addConfigureOption enable-swoole-curl $installRemoteModule_curl
+				# enable cares support?
+				addConfigureOption enable-cares yes
+				# enable brotli support?
+				addConfigureOption enable-brotli yes
+				# enable PostgreSQL database support?
+				addConfigureOption enable-swoole-pgsql yes
+				# enable ODBC database support?
+				addConfigureOption with-swoole-odbc no
+				# enable Oracle database support?
+				addConfigureOption with-swoole-oracle no
+				# enable Sqlite database support?
+				addConfigureOption enable-swoole-sqlite $installRemoteModule_sqlite
+			elif test $(compareVersions "$installRemoteModule_version" 5.0.1) -ge 0; then
 				# enable sockets supports?
 				addConfigureOption enable-sockets $installRemoteModule_sockets
 				# enable openssl support?
@@ -4684,7 +4948,7 @@ esac
 setPHPVersionVariables
 setPHPPreinstalledModules
 case "$PHP_MAJMIN_VERSION" in
-	505 | 506 | 700 | 701 | 702 | 703 | 704 | 800 | 801 | 802 | 803) ;;
+	505 | 506 | 700 | 701 | 702 | 703 | 704 | 800 | 801 | 802 | 803 | 804) ;;
 	*)
 		printf "### ERROR: Unsupported PHP version: %s.%s ###\n" $((PHP_MAJMIN_VERSION / 100)) $((PHP_MAJMIN_VERSION % 100))
 		;;
@@ -4720,6 +4984,8 @@ fi
 if test $USE_PICKLE -gt 1; then
 	buildPickle
 fi
+
+compileLibs
 
 for PHP_MODULE_TO_INSTALL in $PHP_MODULES_TO_INSTALL; do
 	case "$PHP_MODULE_TO_INSTALL" in

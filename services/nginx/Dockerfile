@@ -1,3 +1,3 @@
-FROM nginx:1.26-alpine
+FROM nginx:1.19.1-alpine
 
 WORKDIR /www

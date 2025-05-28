@@ -22,7 +22,6 @@ services:
     restart: always
     networks:
       - default
-
   mysql:
     image: mysql:${MYSQL_VERSION}
     container_name: mysql

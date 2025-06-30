@@ -4,13 +4,21 @@ networks:
     driver: ${NETWORKS_DRIVER}
 
 services:
-  caddy:
+  nginx:
     build:
-      context: ./services/caddy
-    container_name: caddy
+      context: ./services/nginx
+    container_name: nginx
     ports:
       - "80:80"
       - "443:443"
+    volumes:
+      - ./www:/www
+      - ./services/nginx/ssl:/ssl
+      - ./services/nginx/conf.d:/etc/nginx/conf.d
+      - ./services/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./services/nginx/fastcgi-php.conf:/etc/nginx/fastcgi-php.conf
+      - ./services/nginx/fastcgi_params:/etc/nginx/fastcgi_params
+      - ./logs/nginx:/var/log/nginx
     restart: always
     networks:
       - default

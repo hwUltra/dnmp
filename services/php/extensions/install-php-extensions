@@ -265,6 +265,9 @@ EOT
 # Set these variables:
 # - PROCESSED_PHP_MODULE_ARGUMENT
 #
+# Update these variables:
+# - FORCED_REMOTE_MODULES
+#
 # Optionally set these variables:
 # - PHP_WANTEDMODULEVERSION_<...> (where <...> is the normalized module name)
 # - PHP_MODULESOURCECODEPATH_<...> (where <...> is the normalized module name)
@@ -319,6 +322,7 @@ processPHPModuleArgument() {
 		PROCESSED_PHP_MODULE_ARGUMENT="$(normalizePHPModuleName "$PROCESSED_PHP_MODULE_ARGUMENT")"
 	fi
 	if test -n "$processPHPModuleArgument_version"; then
+		FORCED_REMOTE_MODULES="${FORCED_REMOTE_MODULES:+$FORCED_REMOTE_MODULES }$PROCESSED_PHP_MODULE_ARGUMENT"
 		if printf '%s' "$PROCESSED_PHP_MODULE_ARGUMENT" | grep -Eq '^[a-zA-Z0-9_]+$'; then
 			eval PHP_WANTEDMODULEVERSION_$PROCESSED_PHP_MODULE_ARGUMENT="$processPHPModuleArgument_version"
 		elif printf '%s' "$PROCESSED_PHP_MODULE_ARGUMENT" | grep -Eq '^@[a-zA-Z0-9_]+$'; then
@@ -497,12 +501,14 @@ setPHPPreinstalledModules() {
 #
 # Set:
 #   PHP_MODULES_TO_INSTALL
+#   FORCED_REMOTE_MODULES
 #
 # Output:
 #   Nothing
 processCommandArguments() {
 	processCommandArguments_endArgs=0
 	PHP_MODULES_TO_INSTALL=''
+	FORCED_REMOTE_MODULES=''
 	# Support deprecated flag IPE_FIX_CACERTS
 	case "${IPE_FIX_CACERTS:-}" in
 		1 | y* | Y*)
@@ -1031,6 +1037,9 @@ buildRequiredPackageLists() {
 			intl@alpine)
 				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent icu-libs $buildRequiredPackageLists_icuPersistent"
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile icu-dev"
+				if test $DISTRO_MAJMIN_VERSION -ge 322 && test $PHP_MAJMIN_VERSION -eq 801; then
+					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile patch"
+				fi
 				;;
 			intl@debian)
 				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent ^libicu[0-9]+$"
@@ -1147,6 +1156,14 @@ buildRequiredPackageLists() {
 			mssql@debian)
 				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libsybdb5"
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile freetds-dev"
+				;;
+			nsq@alpine)
+				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libevent $buildRequiredPackageLists_libssl"
+				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libevent-dev $buildRequiredPackageLists_libssldev"
+				;;
+			nsq@debian)
+				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent ^libevent[0-9\.\-]*$"
+				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libevent-dev $buildRequiredPackageLists_libssldev"
 				;;
 			oauth@alpine)
 				if test $PHP_MAJMIN_VERSION -ge 700; then
@@ -2537,45 +2554,56 @@ actuallyInstallComposer() {
 # Install ionCube Loader
 installIonCubeLoader() {
 	installIonCubeLoader_version=''
+	installIonCubeLoader_soPrefix=ioncube_loader_lin
+	installIonCubeLoader_url='https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin'
 	case "$DISTRO" in
 		alpine)
-			# For 14.4.0 we have a Segmentation Fault
-			installIonCubeLoader_version=14.0.0
+			if test $DISTRO_MAJMIN_VERSION -le 312; then
+				installIonCubeLoader_version=14.0.0 # For 14.4.0 we have a Segmentation Fault
+			fi
+			if test -z "$installIonCubeLoader_version" || test $(compareVersions "$installIonCubeLoader_version" 14.4.0) -ge 0; then
+				installIonCubeLoader_url="${installIonCubeLoader_url}-musl"
+				installIonCubeLoader_soPrefix="${installIonCubeLoader_soPrefix}-musl"
+			fi
 			;;
 	esac
-	installIonCubeLoader_versionForUrl=''
-	installIonCubeLoader_versionForMessage=latest
-	if test -n "$installIonCubeLoader_version"; then
-		installIonCubeLoader_versionForUrl="_$installIonCubeLoader_version"
-		installIonCubeLoader_versionForMessage="v$installIonCubeLoader_version"
-	fi
-	# See https://www.ioncube.com/loaders.php
 	case $PHP_BITS in
 		32)
 			case $(uname -m) in
 				aarch* | arm*)
-					installIonCubeLoader_url="https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_armv7l$installIonCubeLoader_versionForUrl.tar.gz"
+					installIonCubeLoader_url="${installIonCubeLoader_url}_armv7l"
 					;;
 				*)
-					installIonCubeLoader_url="https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86$installIonCubeLoader_versionForUrl.tar.gz"
+					installIonCubeLoader_url="${installIonCubeLoader_url}_x86"
 					;;
 			esac
 			;;
 		*)
 			case $(uname -m) in
 				aarch64 | arm64 | armv8)
-					installIonCubeLoader_url="https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_aarch64$installIonCubeLoader_versionForUrl.tar.gz"
+					installIonCubeLoader_url="${installIonCubeLoader_url}_aarch64"
 					;;
 				*)
-					installIonCubeLoader_url="https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64$installIonCubeLoader_versionForUrl.tar.gz"
+					installIonCubeLoader_url="${installIonCubeLoader_url}_x86-64"
 					;;
 			esac
 			;;
 	esac
-	printf 'Downloading ionCube Loader (%s)... ' "$installIonCubeLoader_versionForMessage"
+	installIonCubeLoader_versionDisplayName=latest
+	if test -n "$installIonCubeLoader_version"; then
+		installIonCubeLoader_url="${installIonCubeLoader_url}_${installIonCubeLoader_version}"
+		installIonCubeLoader_versionDisplayName="v$installIonCubeLoader_version"
+	fi
+	installIonCubeLoader_url="${installIonCubeLoader_url}.tar.gz"
+	# See https://www.ioncube.com/loaders.php
+	printf 'Downloading ionCube Loader (%s)... ' "$installIonCubeLoader_versionDisplayName"
 	installIonCubeLoader_dir="$(getPackageSource $installIonCubeLoader_url)"
 	echo 'done.'
-	installIonCubeLoader_so=$(php -r "printf('ioncube_loader_lin_%s.%s%s.so', PHP_MAJOR_VERSION, PHP_MINOR_VERSION, ZEND_THREAD_SAFE ? '_ts' : '');")
+	installIonCubeLoader_so="${installIonCubeLoader_soPrefix}_${PHP_MAJDOTMIN_VERSION}"
+	if test $PHP_THREADSAFE -eq 1; then
+		installIonCubeLoader_so="${installIonCubeLoader_so}_ts"
+	fi
+	installIonCubeLoader_so="${installIonCubeLoader_so}.so"
 	cp "$installIonCubeLoader_dir/$installIonCubeLoader_so" "$(getPHPExtensionsDir)/ioncube_loader.so"
 }
 
@@ -2832,6 +2860,37 @@ EOF
 				alpine)
 					if test $PHP_MAJMIN_VERSION -lt 804; then
 						CFLAGS='-I/tmp/src/firebird/src/jrd -I/tmp/src/firebird/src/include -I/tmp/src/firebird/src/include/gen' docker-php-ext-configure $1
+					fi
+					;;
+			esac
+			;;
+		intl)
+			case "$DISTRO" in
+				alpine)
+					if test $DISTRO_MAJMIN_VERSION -ge 322 && test $PHP_MAJMIN_VERSION -eq 801; then
+						# See https://github.com/php/php-src/commit/3fdd3ed9f722d9f0aa3122b2340a611db2dfa110
+						docker-php-source extract
+						patch /usr/src/php/ext/intl/config.m4 <<'EOF'
+@@ -85,7 +85,16 @@ if test "$PHP_INTL" != "no"; then
+     breakiterator/codepointiterator_methods.cpp"
+ 
+   PHP_REQUIRE_CXX()
+-  PHP_CXX_COMPILE_STDCXX(11, mandatory, PHP_INTL_STDCXX)
++
++  AC_MSG_CHECKING([if intl requires -std=gnu++17])
++  AS_IF([$PKG_CONFIG icu-uc --atleast-version=74],[
++    AC_MSG_RESULT([yes])
++    PHP_CXX_COMPILE_STDCXX(17, mandatory, PHP_INTL_STDCXX)
++  ],[
++    AC_MSG_RESULT([no])
++    PHP_CXX_COMPILE_STDCXX(11, mandatory, PHP_INTL_STDCXX)
++  ])
++
+   PHP_INTL_CXX_FLAGS="$INTL_COMMON_FLAGS $PHP_INTL_STDCXX $ICU_CXXFLAGS"
+   case $host_alias in
+   *cygwin*) PHP_INTL_CXX_FLAGS="$PHP_INTL_CXX_FLAGS -D_POSIX_C_SOURCE=200809L"
+EOF
+
 					fi
 					;;
 			esac
@@ -3216,6 +3275,19 @@ installRemoteModule() {
 			# event must be loaded after sockets
 			installRemoteModule_ini_basename="xx-php-ext-$installRemoteModule_module"
 			;;
+		excimer)
+			if test -z "$installRemoteModule_version"; then
+				case "$DISTRO" in
+					alpine)
+						if test $DISTRO_MAJMIN_VERSION -le 313; then
+							# With newer versions we have:
+							# configure: error: excimer requires timer_create or kevent
+							installRemoteModule_version=1.2.3
+						fi
+						;;
+				esac
+			fi
+			;;
 		gearman)
 			if test -z "$installRemoteModule_version"; then
 				if test $PHP_MAJMIN_VERSION -le 506; then
@@ -3260,6 +3332,8 @@ installRemoteModule() {
 			if test -z "$installRemoteModule_version"; then
 				if test $PHP_MAJMIN_VERSION -le 506; then
 					installRemoteModule_version=0.2.1
+				elif test $PHP_MAJMIN_VERSION -le 704; then
+					installRemoteModule_version=0.3.2
 				else
 					installRemoteModule_version=beta
 				fi
@@ -3275,6 +3349,7 @@ installRemoteModule() {
 			fi
 			;;
 		grpc)
+			installRemoteModule_cppflags='-Wno-maybe-uninitialized -Wno-attributes -Wno-return-type'
 			if test -z "$installRemoteModule_version"; then
 				if test $PHP_MAJMIN_VERSION -le 506; then
 					installRemoteModule_version=1.33.1
@@ -3286,15 +3361,11 @@ installRemoteModule() {
 						alpine@3.7 | alpine@3.8 | debian@9) # With newer version: "This package requires GCC 7 or higher"
 							installRemoteModule_version=1.52.1
 							;;
+						alpine@3.13) # With 1.71.0, 1.72.0: "src/core/call/call_filters.h:1002:69: internal compiler error: in assign_temp, at function.c:984"
+							installRemoteModule_version=1.70.0
+							;;
 					esac
 				fi
-			fi
-			if test -z "$installRemoteModule_version" || test "$installRemoteModule_version" = 1.35.0; then
-				case "$DISTRO_VERSION" in
-					alpine@3.13)
-						installRemoteModule_cppflags='-Wno-maybe-uninitialized'
-						;;
-				esac
 			fi
 			;;
 		http)
@@ -3678,6 +3749,13 @@ installRemoteModule() {
 				addConfigureOption enable-swoole-curl yes
 			fi
 			;;
+		opentelemetry)
+			if test -z "$installRemoteModule_version"; then
+				if test $PHP_MAJMIN_VERSION -lt 801; then
+					installRemoteModule_version=1.1.3
+				fi
+			fi
+			;;
 		operator)
 			if test -z "$installRemoteModule_version"; then
 				installRemoteModule_version=beta
@@ -3908,7 +3986,7 @@ installRemoteModule() {
 		saxon)
 			if test -z "$installRemoteModule_version"; then
 				if test $PHP_MAJMIN_VERSION -ge 800; then
-					installRemoteModule_version='12.4.2'
+					installRemoteModule_version='12.5.0'
 				else
 					installRemoteModule_version='12.3'
 				fi
@@ -4027,7 +4105,7 @@ installRemoteModule() {
 		spx)
 			if test -z "$installRemoteModule_path"; then
 				if test -z "$installRemoteModule_version"; then
-					installRemoteModule_version=v0.4.18
+					installRemoteModule_version=v0.4.20
 				fi
 				if test "${installRemoteModule_version%.*}" = "$installRemoteModule_version"; then
 					installRemoteModule_displayVersion="$installRemoteModule_version"
@@ -4473,6 +4551,17 @@ installRemoteModule() {
 			fi
 			mv "$installRemoteModule_src" $(getPHPExtensionsDir)/tideways.so
 			installRemoteModule_manuallyInstalled=1
+			;;
+		translit)
+			if test -z "$installRemoteModule_version"; then
+				if test $PHP_MAJMIN_VERSION -lt 506; then
+					installRemoteModule_version=0.6.1
+				elif test $PHP_MAJMIN_VERSION -lt 700; then
+					installRemoteModule_version=0.6.3
+				else
+					installRemoteModule_version=beta
+				fi
+			fi
 			;;
 		uopz)
 			installRemoteModule_cppflags='-Wno-incompatible-pointer-types'
@@ -4963,7 +5052,7 @@ invokeAptGetUpdate() {
 	apt-get update -q 2>"$invokeAptGetUpdate_tmp"
 	if test -s "$invokeAptGetUpdate_tmp"; then
 		cat "$invokeAptGetUpdate_tmp" >&2
-		if grep -qE ' KEYEXPIRED [0-9]' "$invokeAptGetUpdate_tmp"; then
+		if grep -qE ' KEYEXPIRED [0-9A-Z]' "$invokeAptGetUpdate_tmp" || grep -qE ' EXPKEYSIG [0-9A-Z]' "$invokeAptGetUpdate_tmp"; then
 			echo '############' >&2
 			echo '# WARNING! #' >&2
 			echo '############' >&2
@@ -5145,7 +5234,7 @@ for PHP_MODULE_TO_INSTALL in $PHP_MODULES_TO_INSTALL; do
 			installComposer
 			;;
 		*)
-			if stringInList "$PHP_MODULE_TO_INSTALL" "$BUNDLED_MODULES"; then
+			if stringInList "$PHP_MODULE_TO_INSTALL" "$BUNDLED_MODULES" && ! stringInList "$PHP_MODULE_TO_INSTALL" "$FORCED_REMOTE_MODULES"; then
 				installBundledModule "$PHP_MODULE_TO_INSTALL"
 			else
 				installRemoteModule "$PHP_MODULE_TO_INSTALL"
